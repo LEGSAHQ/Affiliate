@@ -75,14 +75,19 @@ async function trackRef() {
 }
 
 // ---- Selepas bayar (dari ToyyibPay) ----
-function showReturn() {
-  const q = new URLSearchParams(location.search), o = q.get('order'), s = q.get('status_id');
+async function showReturn() {
+  const o = new URLSearchParams(location.search).get('order');
   if (!o) return;
-  $('banner').innerHTML = s === '3'
-    ? `<div class="msg bad">Bayaran untuk ${e(o)} tidak berjaya. Sila cuba lagi.</div>`
-    : s === '1'
-    ? `<div class="msg ok">Terima kasih! Bayaran untuk ${e(o)} diterima. Kami akan hubungi anda tidak lama lagi.</div>`
-    : `<div class="msg wait">Pesanan ${e(o)} sedang disahkan. Sila tunggu sebentar.</div>`;
+  $('banner').innerHTML = `<div class="msg wait">Pesanan ${e(o)} sedang disahkan. Sila tunggu sebentar...</div>`;
+  try {
+    const r = await fetch(URL_ + '/functions/v1/toyyibpay-callback?verify=' + encodeURIComponent(o));
+    const t = await r.text();
+    $('banner').innerHTML = (r.ok && t === 'OK')
+      ? `<div class="msg ok">Terima kasih! Bayaran untuk ${e(o)} telah disahkan. Kami akan hubungi anda tidak lama lagi.</div>`
+      : `<div class="msg bad">Bayaran untuk ${e(o)} belum disahkan. Jika anda sudah membayar, sila hubungi kami dengan nombor pesanan ini.</div>`;
+  } catch (err) {
+    $('banner').innerHTML = `<div class="msg bad">Tidak dapat menyemak pesanan ${e(o)} sekarang. Sila hubungi kami dengan nombor pesanan ini.</div>`;
+  }
 }
 
 // ---- Produk & troli ----
