@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kedai Kami</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--g:#059669;--d:#0f172a}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:#f8fafc;color:var(--d)}
+header{background:var(--d);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+header a{color:#a7f3d0;font-size:13px}
+.wrap{max-width:960px;margin:0 auto;padding:20px}
+.msg{padding:14px 16px;border-radius:10px;margin-bottom:16px;font-weight:600}
+.ok{background:#d1fae5}.wait{background:#fef3c7}.bad{background:#fee2e2}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 1px 8px #0001;display:flex;flex-direction:column;gap:6px}
+.tag{font-size:11px;font-weight:700;color:var(--g);letter-spacing:.05em}
+.price{font-size:22px;font-weight:800}
+.qty{display:flex;align-items:center;gap:10px;margin-top:auto}
+.qty button{width:34px;height:34px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;font-size:18px;cursor:pointer}
+button.pay{background:var(--g);color:#fff;border:0;font-weight:700;font-size:16px;padding:13px;border-radius:10px;width:100%;cursor:pointer}
+button.pay:disabled{opacity:.5}
+input,textarea{width:100%;padding:11px;margin:5px 0;border:1px solid #cbd5e1;border-radius:8px;font:inherit}
+#checkout{margin-top:24px;display:none}
+.row{display:flex;justify-content:space-between;padding:4px 0}
+</style>
+</head>
+<body>
+<header><b>Kedai Kami</b><a href="portal.html">Portal Affiliate</a></header>
+<div class="wrap">
+  <div id="banner"></div>
+  <h2>Produk &amp; Servis</h2>
+  <div id="products" class="grid">Memuatkan...</div>
+
+  <div id="checkout" class="card">
+    <h2 style="margin:0">Troli anda</h2>
+    <div id="lines"></div>
+    <div class="row"><b>Jumlah produk</b><b id="sub"></b></div>
+    <small id="shipnote" style="display:none">Caj pos J&amp;T akan ditambah di halaman bayaran (untuk buku sahaja).</small>
+    <input id="cn" placeholder="Nama penuh">
+    <input id="ct" placeholder="No. telefon">
+    <input id="ce" type="email" placeholder="Emel">
+    <textarea id="ca" rows="3" placeholder="Alamat penghantaran (wajib untuk buku)" style="display:none"></textarea>
+    <button id="paybtn" class="pay" onclick="checkout()">Bayar sekarang (FPX)</button>
+    <small>Anda akan dihantar ke halaman rasmi ToyyibPay untuk membayar dengan selamat.</small>
+  </div>
+</div>
+
+<script>
+const URL_ = 'https://hdqzankwjhhvywabjxtm.supabase.co';
+const db = supabase.createClient(URL_, 'sb_publishable_FEGHw6qemE6cj77TmnDMVA_k7gU5J2S');
+const $ = id => document.getElementById(id);
+const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rm = n => 'RM ' + Number(n).toFixed(2);
+const ICON = { BOOK: 'BUKU', WEBINAR: 'WEBINAR', EVENT: 'EVENT' };
+let products = [], cart = {};
+
+// ---- Affiliate attribution (last click, 30 hari) ----
+const DAYS = 30;
+function getRef() {
+  try {
+    const r = JSON.parse(localStorage.getItem('aff_ref') || 'null');
+    return r && Date.now() - r.t < DAYS * 864e5 ? r.code : null;
+  } catch { return null; }
+}
+async function trackRef() {
+  const code = new URLSearchParams(location.search).get('ref');
+  if (!code) return;
+  localStorage.setItem('aff_ref', JSON.stringify({ code, t: Date.now() }));
+  let sid = localStorage.getItem('sid');
+  if (!sid) { sid = crypto.randomUUID(); localStorage.setItem('sid', sid); }
+  await db.rpc('track_click', { p_code: code, p_session: sid });
+}
+
+// ---- Selepas bayar (dari ToyyibPay) ----
+function showReturn() {
+  const q = new URLSearchParams(location.search), o = q.get('order'), s = q.get('status_id');
+  if (!o) return;
+  $('banner').innerHTML = s === '3'
+    ? `<div class="msg bad">Bayaran untuk ${e(o)} tidak berjaya. Sila cuba lagi.</div>`
+    : s === '1'
+    ? `<div class="msg ok">Terima kasih! Bayaran untuk ${e(o)} diterima. Kami akan hubungi anda tidak lama lagi.</div>`
+    : `<div class="msg wait">Pesanan ${e(o)} sedang disahkan. Sila tunggu sebentar.</div>`;
+}
+
+// ---- Produk & troli ----
+async function load() {
+  const { data, error } = await db.from('products').select('*').eq('active', true).order('created_at');
+  if (error) { $('products').textContent = 'Gagal memuatkan produk: ' + error.message; return; }
+  products = data;
+  $('products').innerHTML = data.length ? data.map(p => `<div class="card"><span class="tag">${ICON[p.type]}</span><b>${e(p.name)}</b><span class="price">${rm(p.price)}</span>
+    <div class="qty"><button onclick="chg('${p.id}',-1)">-</button><b id="q_${p.id}">0</b><button onclick="chg('${p.id}',1)">+</button></div></div>`).join('') : 'Belum ada produk.';
+}
+function chg(id, d) {
+  cart[id] = Math.max(0, Math.min(20, (cart[id] || 0) + d));
+  if (!cart[id]) delete cart[id];
+  $('q_' + id).textContent = cart[id] || 0;
+  renderCart();
+}
+function renderCart() {
+  const ids = Object.keys(cart);
+  $('checkout').style.display = ids.length ? 'block' : 'none';
+  let sub = 0, book = false;
+  $('lines').innerHTML = ids.map(id => {
+    const p = products.find(x => x.id === id), t = p.price * cart[id];
+    sub += t; if (p.type === 'BOOK') book = true;
+    return `<div class="row"><span>${e(p.name)} x ${cart[id]}</span><span>${rm(t)}</span></div>`;
+  }).join('');
+  $('sub').textContent = rm(sub);
+  $('ca').style.display = book ? 'block' : 'none';
+  $('shipnote').style.display = book ? 'block' : 'none';
+}
+
+async function checkout() {
+  const btn = $('paybtn');
+  const customer = { name: $('cn').value.trim(), phone: $('ct').value.trim(), email: $('ce').value.trim(), address: $('ca').value.trim() };
+  if (!customer.name || !customer.phone || !customer.email) return alert('Sila isi nama, telefon dan emel.');
+  btn.disabled = true; btn.textContent = 'Memproses...';
+  try {
+    const r = await fetch(URL_ + '/functions/v1/create-order', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: Object.entries(cart).map(([product_id, qty]) => ({ product_id, qty })), customer, ref: getRef() })
+    });
+    const out = await r.json();
+    if (!r.ok || !out.payment_url) throw new Error(out.error || 'Ralat tidak diketahui');
+    location.href = out.payment_url;
+  } catch (err) {
+    alert('Maaf, ' + err.message);
+    btn.disabled = false; btn.textContent = 'Bayar sekarang (FPX)';
+  }
+}
+
+trackRef(); showReturn(); load();
+</script>
+</body>
+</html>
