@@ -86,11 +86,11 @@ const sum = (a, s) => a.filter(x => x.status === s).reduce((t, x) => t + Number(
 const run = async (p, msg) => { const { error } = await p; if (error) alert(error.message); else if (msg) alert(msg); render(); };
 
 const NAV = {
-  admin: [['aff','Affiliates'],['prod','Produk & Komisen'],['ord','Orders'],['pay','Payout'],['set','Tetapan']],
+  admin: [['dash','Overview'],['aff','Affiliates'],['prod','Produk & Komisen'],['ord','Orders'],['pay','Payout'],['set','Tetapan']],
   affiliate: [['dash','Dashboard'],['com','Komisen & Payout'],['prof','Profil & Bank']]
 };
 const ORDER_STATUS = ['PENDING_PAYMENT','PAID','SHIPPED','COMPLETED','CANCELLED','REFUNDED'];
-let me = null, aff = null, tab = '', cnt = {};
+let me = null, aff = null, tab = '', cnt = {}, prodCache = [];
 
 // ---------- AUTH ----------
 function showAuth(k) { $('f-l').style.display = k === 'l' ? 'block' : 'none'; $('f-r').style.display = k === 'r' ? 'block' : 'none'; }
@@ -143,6 +143,51 @@ async function render() {
 // ---------- PAPARAN ----------
 const VIEWS = {
   // ADMIN
+  dash: async () => {
+    const since = new Date(Date.now() - 32 * 864e5).toISOString();
+    const [o, it, c, a, pd] = await Promise.all([
+      db.from('orders').select('id,status,subtotal,affiliate_id,created_at').gte('created_at', since),
+      db.from('order_items').select('product_name,qty,unit_price,orders(status)'),
+      db.from('commissions').select('amount,status'),
+      db.from('affiliates').select('id,name,code,status,clicks'),
+      db.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PAID')
+    ]);
+    const isPaid = s => ['PAID', 'SHIPPED', 'COMPLETED'].includes(s);
+    const P = (o.data || []).filter(x => isPaid(x.status));
+    const day = d => new Date(d).toLocaleDateString('en-CA');
+    const today = day(Date.now()), month = today.slice(0, 7);
+    const tot = arr => arr.reduce((t, x) => t + Number(x.subtotal), 0);
+    const monthP = P.filter(x => day(x.created_at).startsWith(month));
+    const cm = st => (c.data || []).filter(x => x.status === st).reduce((t, x) => t + Number(x.amount), 0);
+
+    const days = [...Array(30)].map((_, i) => day(Date.now() - (29 - i) * 864e5));
+    const vals = days.map(d => tot(P.filter(x => day(x.created_at) === d)));
+    const mx = Math.max(...vals, 1);
+    const chart = `<svg viewBox="0 0 600 150" style="width:100%;height:auto">${vals.map((v, i) => `<rect x="${i * 20 + 2}" y="${130 - v / mx * 120}" width="16" height="${v / mx * 120}" rx="3" fill="#059669"><title>${days[i]}: ${rm(v)}</title></rect>`).join('')}<text x="2" y="146" font-size="10" fill="#64748b">${days[0]}</text><text x="598" y="146" font-size="10" fill="#64748b" text-anchor="end">${days[29]}</text></svg>`;
+
+    const prodMap = {};
+    (it.data || []).filter(x => x.orders && isPaid(x.orders.status)).forEach(x => {
+      const r = prodMap[x.product_name] ||= { q: 0, v: 0 }; r.q += x.qty; r.v += x.qty * Number(x.unit_price);
+    });
+    const topP = Object.entries(prodMap).sort((x, y) => y[1].v - x[1].v).slice(0, 5);
+
+    const affMap = {};
+    P.filter(x => x.affiliate_id).forEach(x => { const r = affMap[x.affiliate_id] ||= { n: 0, v: 0 }; r.n++; r.v += Number(x.subtotal); });
+    const topA = Object.entries(affMap).sort((x, y) => y[1].v - x[1].v).slice(0, 5).map(([id, r]) => {
+      const f = (a.data || []).find(z => z.id === id) || {};
+      return [e(f.name), e(f.code), rm(r.v), r.n, f.clicks || 0, f.clicks ? (r.n / f.clicks * 100).toFixed(1) + '%' : '-'];
+    });
+
+    const todo = [[pd.count, 'order dibayar, menunggu dihantar/diselesaikan', 'ord'], [cnt.aff, 'affiliate menunggu kelulusan', 'aff'], [cnt.pay, 'permohonan payout menunggu dibayar', 'pay']].filter(x => x[0] > 0);
+    const activeAff = (a.data || []).filter(x => x.status === 'ACTIVE').length;
+
+    return `<div class="grid">${card('Jualan hari ini', rm(tot(P.filter(x => day(x.created_at) === today))))}${card('Jualan bulan ini', rm(tot(monthP)))}${card('Order bulan ini', monthP.length)}${card('Komisen menunggu holding', rm(cm('PENDING')))}${card('Komisen perlu dibayar', rm(cm('APPROVED') + cm('REQUESTED')))}${card('Affiliate aktif', activeAff)}</div>
+    <div class="card"><b>Tindakan perlu</b><div style="margin-top:8px">${todo.length ? todo.map(x => `<button class="gr" onclick="go('${x[2]}')"><b>${x[0]}</b> ${x[1]}</button>`).join('') : 'Tiada tindakan tertunda.'}</div></div>
+    <div class="card"><b>Jualan produk 30 hari terakhir</b> <small>(tanpa caj pos)</small>${chart}</div>
+    <h3>Produk terlaris</h3>${table(['Produk', 'Unit terjual', 'Jualan'], topP.map(([n, r]) => [e(n), r.q, rm(r.v)]))}
+    <h3>Affiliate terbaik</h3>${table(['Nama', 'Kod', 'Jualan', 'Order', 'Klik', 'Klik kepada order'], topA)}
+    <small>Jualan dikira untuk order berstatus PAID, SHIPPED atau COMPLETED.</small>`;
+  },
   aff: async () => {
     const { data } = await db.from('affiliates').select('*').order('created_at', { ascending: false });
     return table(['Kod','Nama','Emel','Telefon','Status','Tier','Klik',''], data.map(a => [
@@ -152,14 +197,15 @@ const VIEWS = {
   },
   prod: async () => {
     const { data } = await db.from('products').select('*').order('created_at');
+    prodCache = data;
     return `<div class="card"><b>Tambah produk</b><div class="fr"><input id="np_n" placeholder="Nama produk"><select id="np_t"><option>BOOK</option><option>WEBINAR</option><option>EVENT</option></select><input id="np_p" type="number" step="0.01" placeholder="Harga (RM)"><button onclick="addProd()">Tambah</button></div></div>` +
       table(['Nama','Jenis','Harga (RM)','Jenis komisen','Nilai','Aktif',''], data.map(p => [
-        e(p.name), p.type,
+        e(p.name) + (p.active ? '' : ' <small>(tidak aktif)</small>'), p.type,
         `<input id="pp_${p.id}" type="number" step="0.01" value="${p.price}">`,
         `<select id="pt_${p.id}">${['DEFAULT','PERCENT','FIXED'].map(o => `<option ${o === p.commission_type ? 'selected' : ''}>${o}</option>`).join('')}</select>`,
         `<input id="pv_${p.id}" type="number" step="0.01" value="${p.commission_value}">`,
         `<input id="pa_${p.id}" type="checkbox" style="width:auto" ${p.active ? 'checked' : ''}>`,
-        `<button onclick="saveProd('${p.id}')">Simpan</button>`
+        `<button onclick="saveProd('${p.id}')">Simpan</button><button class="rd" onclick="delProd('${p.id}')">Padam</button>`
       ])) + '<p>PERCENT = peratus daripada harga. FIXED = jumlah tetap (RM). DEFAULT = ikut kadar tier affiliate.</p>';
   },
   ord: async () => {
@@ -212,6 +258,16 @@ const VIEWS = {
 const setAff = (id, s) => run(db.from('affiliates').update({ status: s }).eq('id', id));
 const addProd = () => run(db.from('products').insert({ name: $('np_n').value.trim(), type: $('np_t').value, price: Number($('np_p').value) }));
 const saveProd = id => run(db.from('products').update({ price: Number($('pp_' + id).value), commission_type: $('pt_' + id).value, commission_value: Number($('pv_' + id).value), active: $('pa_' + id).checked }).eq('id', id), 'Disimpan');
+async function delProd(id) {
+  const p = prodCache.find(x => x.id === id);
+  if (!confirm(`Padam produk "${p ? p.name : ''}" secara kekal?`)) return;
+  const { error } = await db.from('products').delete().eq('id', id);
+  if (!error) { alert('Produk dipadam'); return render(); }
+  if (error.code === '23503') {
+    if (confirm('Produk ini ada dalam rekod order, jadi tak boleh dipadam kekal (rekod jualan mesti dikekalkan).\n\nNyahaktifkan sahaja supaya hilang dari kedai?'))
+      run(db.from('products').update({ active: false }).eq('id', id), 'Produk dinyahaktifkan dan tidak lagi dipaparkan di kedai');
+  } else alert(error.message);
+}
 const saveSet = k => run(db.from('settings').update({ value: $('s_' + k).value }).eq('key', k), 'Disimpan');
 const appr = async () => { const { data, error } = await db.rpc('approve_due_commissions'); alert(error ? error.message : data + ' komisen diluluskan'); };
 const payDone = id => { const r = prompt('No. rujukan pindahan bank:'); if (r !== null) run(db.rpc('mark_payout_paid', { p_id: id, p_ref: r }), 'Ditanda dibayar'); };
