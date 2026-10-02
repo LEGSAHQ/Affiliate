@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Portal Affiliate</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--g:#059669;--d:#0f172a}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:#f1f5f9;color:var(--d);font-size:14px}
+input,select,button{padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;width:100%;margin:4px 0}
+button{width:auto;margin:2px;background:var(--g);color:#fff;border:0;font-weight:600;cursor:pointer}
+button.gr{background:#e2e8f0;color:var(--d)} button.rd{background:#dc2626}
+.auth{max-width:380px;margin:7vh auto;background:#fff;padding:26px;border-radius:14px;box-shadow:0 2px 14px #0002}
+.auth button{width:100%;margin:8px 0 2px}
+.lk{background:none;color:var(--g);width:auto;padding:4px;text-decoration:underline}
+#app{display:none}
+aside{width:240px;background:var(--d);color:#cbd5e1;position:fixed;top:0;bottom:0;left:0;padding:16px 10px;display:flex;flex-direction:column;z-index:20;transition:.2s}
+aside h3{color:#fff;margin:4px 8px}
+.sm{font-size:12px;color:#94a3b8;margin:0 8px 14px;word-break:break-all}
+.nv{display:flex;justify-content:space-between;width:100%;text-align:left;background:none;color:#cbd5e1;padding:10px 12px;margin:2px 0}
+.nv:hover{background:#1e293b}.nv.on{background:var(--g);color:#fff}
+.bd{background:#fbbf24;color:var(--d);border-radius:99px;padding:0 7px;font-size:11px}
+main{margin-left:240px;padding:24px}
+.hb{display:none;width:auto}
+.card{background:#fff;border-radius:12px;padding:16px;margin:0 0 16px;box-shadow:0 1px 6px #0001}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.grid .card{margin:0}.grid b{font-size:20px;display:block;margin-top:4px}
+.fr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.fr input,.fr select{flex:1;min-width:120px}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:8px;border-bottom:1px solid #e2e8f0;white-space:nowrap}
+td input,td select{margin:0;min-width:80px}
+.st{background:#e2e8f0;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:600}
+@media(max-width:800px){aside{transform:translateX(-100%)}aside.open{transform:none}main{margin-left:0;padding:14px}.hb{display:inline-block}}
+</style>
+</head>
+<body>
+
+<div id="auth" class="auth">
+  <h2 style="margin-top:0">Portal Affiliate</h2>
+  <div id="f-l">
+    <input id="le" type="email" placeholder="Emel">
+    <input id="lp" type="password" placeholder="Kata laluan">
+    <button onclick="login()">Log masuk</button>
+    <button class="lk" onclick="showAuth('r')">Belum ada akaun? Daftar sebagai affiliate</button>
+  </div>
+  <div id="f-r" style="display:none">
+    <input id="rn" placeholder="Nama penuh">
+    <input id="rt" placeholder="No. telefon">
+    <input id="re" type="email" placeholder="Emel">
+    <input id="rp" type="password" placeholder="Kata laluan (min 6 aksara)">
+    <button onclick="register()">Daftar</button>
+    <button class="lk" onclick="showAuth('l')">Sudah ada akaun? Log masuk</button>
+  </div>
+</div>
+
+<div id="app">
+  <aside id="sb">
+    <h3>Portal Affiliate</h3>
+    <div id="who" class="sm"></div>
+    <nav id="nav"></nav>
+    <div style="margin-top:auto"><button class="nv" onclick="logout()">Log keluar</button></div>
+  </aside>
+  <main>
+    <div class="fr" style="margin-bottom:16px">
+      <button class="hb gr" onclick="document.getElementById('sb').classList.toggle('open')">&#9776;</button>
+      <h2 id="title" style="margin:0"></h2>
+    </div>
+    <div id="content"></div>
+  </main>
+</div>
+
+<script>
+const db = supabase.createClient('https://hdqzankwjhhvywabjxtm.supabase.co', 'sb_publishable_FEGHw6qemE6cj77TmnDMVA_k7gU5J2S');
+// Alamat kedai = folder yang sama dengan portal ini (index.html)
+const STORE_URL = location.origin + location.pathname.replace(/[^/]*$/, '');
+
+const $ = id => document.getElementById(id);
+const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rm = n => 'RM ' + Number(n || 0).toFixed(2);
+const st = s => `<span class="st">${e(s)}</span>`;
+const card = (l, v) => `<div class="card">${l}<b>${v}</b></div>`;
+const table = (h, r) => `<div class="card tw"><table><tr>${h.map(x => `<th>${x}</th>`).join('')}</tr>${r.map(row => `<tr>${row.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table>${r.length ? '' : '<p>Tiada rekod.</p>'}</div>`;
+const sum = (a, s) => a.filter(x => x.status === s).reduce((t, x) => t + Number(x.amount), 0);
+const run = async (p, msg) => { const { error } = await p; if (error) alert(error.message); else if (msg) alert(msg); render(); };
+
+const NAV = {
+  admin: [['aff','Affiliates'],['prod','Produk & Komisen'],['ord','Orders'],['pay','Payout'],['set','Tetapan']],
+  affiliate: [['dash','Dashboard'],['com','Komisen & Payout'],['prof','Profil & Bank']]
+};
+const ORDER_STATUS = ['PENDING_PAYMENT','PAID','SHIPPED','COMPLETED','CANCELLED','REFUNDED'];
+let me = null, aff = null, tab = '', cnt = {};
+
+// ---------- AUTH ----------
+function showAuth(k) { $('f-l').style.display = k === 'l' ? 'block' : 'none'; $('f-r').style.display = k === 'r' ? 'block' : 'none'; }
+async function login() {
+  const { error } = await db.auth.signInWithPassword({ email: $('le').value.trim(), password: $('lp').value });
+  if (error) return alert(error.message);
+  boot();
+}
+async function register() {
+  const { error } = await db.auth.signUp({
+    email: $('re').value.trim(), password: $('rp').value,
+    options: { data: { full_name: $('rn').value.trim(), phone: $('rt').value.trim() } }
+  });
+  if (error) return alert(error.message);
+  alert('Pendaftaran berjaya. Semak emel untuk pengesahan (jika diminta), kemudian log masuk. Akaun perlu diluluskan admin dahulu.');
+  showAuth('l');
+}
+async function logout() { await db.auth.signOut(); location.reload(); }
+
+async function boot() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) return showAuth('l');
+  const { data: p } = await db.from('profiles').select('*').eq('id', session.user.id).single();
+  me = p;
+  if (p.role === 'affiliate') { const { data: a } = await db.from('affiliates').select('*').eq('user_id', p.id).single(); aff = a; }
+  $('auth').style.display = 'none'; $('app').style.display = 'block';
+  tab = NAV[me.role][0][0];
+  render();
+}
+
+// ---------- SHELL ----------
+const go = k => { tab = k; render(); };
+async function render() {
+  if (me.role === 'admin') {
+    const [a, b] = await Promise.all([
+      db.from('affiliates').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_APPROVAL'),
+      db.from('payouts').select('id', { count: 'exact', head: true }).eq('status', 'REQUESTED')
+    ]);
+    cnt = { aff: a.count, pay: b.count };
+  } else {
+    const { data: a } = await db.from('affiliates').select('*').eq('user_id', me.id).single(); aff = a;
+  }
+  $('nav').innerHTML = NAV[me.role].map(([k, l]) => `<button class="nv ${k === tab ? 'on' : ''}" onclick="go('${k}')"><span>${l}</span>${cnt[k] ? `<b class="bd">${cnt[k]}</b>` : ''}</button>`).join('');
+  $('who').textContent = (me.full_name || me.email) + ' (' + me.role + ')';
+  $('title').textContent = NAV[me.role].find(x => x[0] === tab)[1];
+  $('sb').classList.remove('open');
+  $('content').innerHTML = await VIEWS[tab]();
+}
+
+// ---------- PAPARAN ----------
+const VIEWS = {
+  // ADMIN
+  aff: async () => {
+    const { data } = await db.from('affiliates').select('*').order('created_at', { ascending: false });
+    return table(['Kod','Nama','Emel','Telefon','Status','Tier','Klik',''], data.map(a => [
+      e(a.code), e(a.name), e(a.email), e(a.phone), st(a.status), e(a.tier), a.clicks,
+      `<button onclick="setAff('${a.id}','ACTIVE')">Lulus</button><button class="rd" onclick="setAff('${a.id}','REJECTED')">Tolak</button><button class="gr" onclick="setAff('${a.id}','SUSPENDED')">Gantung</button>`
+    ]));
+  },
+  prod: async () => {
+    const { data } = await db.from('products').select('*').order('created_at');
+    return `<div class="card"><b>Tambah produk</b><div class="fr"><input id="np_n" placeholder="Nama produk"><select id="np_t"><option>BOOK</option><option>WEBINAR</option><option>EVENT</option></select><input id="np_p" type="number" step="0.01" placeholder="Harga (RM)"><button onclick="addProd()">Tambah</button></div></div>` +
+      table(['Nama','Jenis','Harga (RM)','Jenis komisen','Nilai','Aktif',''], data.map(p => [
+        e(p.name), p.type,
+        `<input id="pp_${p.id}" type="number" step="0.01" value="${p.price}">`,
+        `<select id="pt_${p.id}">${['DEFAULT','PERCENT','FIXED'].map(o => `<option ${o === p.commission_type ? 'selected' : ''}>${o}</option>`).join('')}</select>`,
+        `<input id="pv_${p.id}" type="number" step="0.01" value="${p.commission_value}">`,
+        `<input id="pa_${p.id}" type="checkbox" style="width:auto" ${p.active ? 'checked' : ''}>`,
+        `<button onclick="saveProd('${p.id}')">Simpan</button>`
+      ])) + '<p>PERCENT = peratus daripada harga. FIXED = jumlah tetap (RM). DEFAULT = ikut kadar tier affiliate.</p>';
+  },
+  ord: async () => {
+    const { data } = await db.from('orders').select('*, affiliates(code)').order('created_at', { ascending: false });
+    if (!data.length) return '<div class="card">Belum ada order. Order akan masuk di sini selepas ToyyibPay disambung.</div>';
+    return table(['No. Order','Pelanggan','Jumlah','Affiliate','Status','No. tracking J&amp;T'], data.map(o => [
+      e(o.order_no), e(o.customer_name), rm(o.total), e(o.affiliates?.code || '-'),
+      `<select onchange="run(db.rpc('set_order_status',{p_order:'${o.id}',p_status:this.value}))">${ORDER_STATUS.map(s => `<option ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}</select>`,
+      `<input placeholder="No. tracking" value="${e(o.tracking_no || '')}" onchange="run(db.from('orders').update({tracking_no:this.value}).eq('id','${o.id}'))">`
+    ]));
+  },
+  pay: async () => {
+    const { data } = await db.from('payouts').select('*, affiliates(name,code,bank_name,bank_account,bank_holder)').order('requested_at', { ascending: false });
+    return table(['Affiliate','Jumlah','Akaun bank','Status','Rujukan',''], data.map(p => [
+      e(p.affiliates.name) + ' (' + e(p.affiliates.code) + ')', rm(p.amount),
+      e(`${p.affiliates.bank_name || ''} ${p.affiliates.bank_account || ''} a/n ${p.affiliates.bank_holder || ''}`),
+      st(p.status), e(p.reference || ''),
+      p.status === 'REQUESTED' ? `<button onclick="payDone('${p.id}')">Tanda Dibayar</button><button class="rd" onclick="payRej('${p.id}')">Tolak</button>` : ''
+    ]));
+  },
+  set: async () => {
+    const { data } = await db.from('settings').select('*').order('key');
+    return '<div class="card">' + data.map(s => `<div class="fr"><label style="min-width:200px"><b>${e(s.key)}</b><br><small>${e(s.note)}</small></label><input id="s_${s.key}" value="${e(s.value)}"><button onclick="saveSet('${s.key}')">Simpan</button></div>`).join('') +
+      `</div><div class="card"><b>Lulus komisen yang tamat tempoh holding</b><p>Tukar komisen PENDING yang tempoh holdingnya sudah tamat kepada APPROVED. Jalankan sebelum tarikh bayaran bulanan.</p><button onclick="appr()">Jalankan sekarang</button></div>`;
+  },
+
+  // AFFILIATE
+  dash: async () => {
+    if (aff.status !== 'ACTIVE') return `<div class="card">Status akaun: ${st(aff.status)}<p>${aff.status === 'PENDING_APPROVAL' ? 'Akaun anda sedang menunggu kelulusan admin.' : 'Sila hubungi admin.'}</p></div>`;
+    const { data: c } = await db.from('commissions').select('amount,status');
+    return `<div class="grid">${card('Kod anda', e(aff.code))}${card('Klik', aff.clicks)}${card('Tier', e(aff.tier))}${card('Menunggu holding', rm(sum(c, 'PENDING')))}${card('Boleh dimohon', rm(sum(c, 'APPROVED')))}${card('Telah dibayar', rm(sum(c, 'PAID')))}</div>
+      <div class="card"><b>Pautan affiliate anda</b><input id="lnk" readonly value="${e(STORE_URL + '?ref=' + aff.code)}"><button onclick="navigator.clipboard.writeText($('lnk').value);alert('Pautan disalin')">Salin pautan</button></div>`;
+  },
+  com: async () => {
+    const { data: c } = await db.from('commissions').select('*').order('created_at', { ascending: false });
+    const { data: p } = await db.from('payouts').select('*').order('requested_at', { ascending: false });
+    return `<div class="card">Baki boleh dimohon: <b>${rm(sum(c, 'APPROVED'))}</b> <button onclick="reqPay()">Mohon Payout</button></div><h3>Komisen</h3>` +
+      table(['Order','Asas jualan','Komisen','Status'], c.map(x => [e(x.order_no), rm(x.base_amount), rm(x.amount), st(x.status)])) +
+      '<h3>Payout</h3>' + table(['Tarikh','Jumlah','Status','Rujukan'], p.map(x => [new Date(x.requested_at).toLocaleDateString('ms-MY'), rm(x.amount), st(x.status), e(x.reference || '')]));
+  },
+  prof: async () => `<div class="card"><b>Maklumat akaun bank (untuk bayaran komisen)</b>
+    <input id="pf_t" placeholder="No. telefon" value="${e(aff.phone || '')}">
+    <input id="pf_b" placeholder="Nama bank" value="${e(aff.bank_name || '')}">
+    <input id="pf_a" placeholder="No. akaun" value="${e(aff.bank_account || '')}">
+    <input id="pf_h" placeholder="Nama pemegang akaun" value="${e(aff.bank_holder || '')}">
+    <button onclick="saveProf()">Simpan</button></div>`
+};
+
+// ---------- TINDAKAN ----------
+const setAff = (id, s) => run(db.from('affiliates').update({ status: s }).eq('id', id));
+const addProd = () => run(db.from('products').insert({ name: $('np_n').value.trim(), type: $('np_t').value, price: Number($('np_p').value) }));
+const saveProd = id => run(db.from('products').update({ price: Number($('pp_' + id).value), commission_type: $('pt_' + id).value, commission_value: Number($('pv_' + id).value), active: $('pa_' + id).checked }).eq('id', id), 'Disimpan');
+const saveSet = k => run(db.from('settings').update({ value: $('s_' + k).value }).eq('key', k), 'Disimpan');
+const appr = async () => { const { data, error } = await db.rpc('approve_due_commissions'); alert(error ? error.message : data + ' komisen diluluskan'); };
+const payDone = id => { const r = prompt('No. rujukan pindahan bank:'); if (r !== null) run(db.rpc('mark_payout_paid', { p_id: id, p_ref: r }), 'Ditanda dibayar'); };
+const payRej = id => { if (confirm('Tolak payout ini? Komisen akan kembali ke baki affiliate.')) run(db.rpc('reject_payout', { p_id: id })); };
+const reqPay = () => run(db.rpc('request_payout'), 'Permohonan payout dihantar');
+const saveProf = () => run(db.from('affiliates').update({ phone: $('pf_t').value, bank_name: $('pf_b').value, bank_account: $('pf_a').value, bank_holder: $('pf_h').value }).eq('user_id', me.id), 'Disimpan');
+
+boot();
+</script>
+</body>
+</html>
