@@ -86,7 +86,7 @@ const sum = (a, s) => a.filter(x => x.status === s).reduce((t, x) => t + Number(
 const run = async (p, msg) => { const { error } = await p; if (error) alert(error.message); else if (msg) alert(msg); render(); };
 
 const NAV = {
-  admin: [['dash','Overview'],['aff','Affiliates'],['prod','Produk & Komisen'],['ord','Orders'],['pay','Payout'],['set','Tetapan']],
+  admin: [['ovw','Overview'],['aff','Affiliates'],['prod','Produk & Komisen'],['ord','Orders'],['pay','Payout'],['set','Tetapan']],
   affiliate: [['dash','Dashboard'],['com','Komisen & Payout'],['prof','Profil & Bank']]
 };
 const ORDER_STATUS = ['PENDING_PAYMENT','PAID','SHIPPED','COMPLETED','CANCELLED','REFUNDED'];
@@ -137,13 +137,14 @@ async function render() {
   $('who').textContent = (me.full_name || me.email) + ' (' + me.role + ')';
   $('title').textContent = NAV[me.role].find(x => x[0] === tab)[1];
   $('sb').classList.remove('open');
-  $('content').innerHTML = await VIEWS[tab]();
+  try { $('content').innerHTML = await VIEWS[tab](); }
+  catch (err) { console.error(err); $('content').innerHTML = `<div class="card"><b>Ralat memuatkan halaman</b><p>${e(err.message)}</p></div>`; }
 }
 
 // ---------- PAPARAN ----------
 const VIEWS = {
   // ADMIN
-  dash: async () => {
+  ovw: async () => {
     const since = new Date(Date.now() - 32 * 864e5).toISOString();
     const [o, it, c, a, pd] = await Promise.all([
       db.from('orders').select('id,status,subtotal,affiliate_id,created_at').gte('created_at', since),
