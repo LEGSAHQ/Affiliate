@@ -1,70 +1,1628 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kedai Kami</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-:root{--g:#059669;--d:#0f172a}
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui,sans-serif;background:#f8fafc;color:var(--d)}
-header{background:var(--d);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
-header a{color:#a7f3d0;font-size:13px}
-.wrap{max-width:960px;margin:0 auto;padding:20px}
-.msg{padding:14px 16px;border-radius:10px;margin-bottom:16px;font-weight:600}
-.ok{background:#d1fae5}.wait{background:#fef3c7}.bad{background:#fee2e2}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
-.card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 1px 8px #0001;display:flex;flex-direction:column;gap:6px}
-.tag{font-size:11px;font-weight:700;color:var(--g);letter-spacing:.05em}
-.price{font-size:22px;font-weight:800}
-.qty{display:flex;align-items:center;gap:10px;margin-top:auto}
-.qty button{width:34px;height:34px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;font-size:18px;cursor:pointer}
-button.pay{background:var(--g);color:#fff;border:0;font-weight:700;font-size:16px;padding:13px;border-radius:10px;width:100%;cursor:pointer}
-button.pay:disabled{opacity:.5}
-input,textarea{width:100%;padding:11px;margin:5px 0;border:1px solid #cbd5e1;border-radius:8px;font:inherit}
-#checkout{margin-top:24px;display:none}
-.row{display:flex;justify-content:space-between;padding:4px 0}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEGSA Empire - Portal Produk & Servis Premium</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans, Cormorant Garamond, Cinzel & Amiri for Quranic luxury feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@600;700;800;900&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-dark: #0B1320;
+            --primary-surface: #111B2E;
+            --primary-card: #18253B;
+            
+            --gold-accent: #D4AF37;
+            --gold-hover: #B89320;
+            --gold-light: #FFF9E6;
+            --gold-gradient: linear-gradient(135deg, #BF953F 0%, #FCF6BA 25%, #B38728 50%, #FBF5B7 75%, #AA771C WhatsApp);
+            --gold-metallic: linear-gradient(135deg, #D4AF37 0%, #EDC967 50%, #A37E1C 100%);
+            
+            --bg-light: #F8FAFC;
+            --surface-white: #FFFFFF;
+            
+            --text-heading: #0F172A;
+            --text-body: #334155;
+            --text-muted: #64748B;
+            --text-gold: #C5A059;
+            
+            --border-subtle: #E2E8F0;
+            --border-gold: rgba(212, 175, 55, 0.3);
+            
+            --success: #059669;
+            --danger: #DC2626;
+            
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 22px;
+            
+            --shadow-subtle: 0 4px 20px -2px rgba(11, 19, 32, 0.05);
+            --shadow-card: 0 12px 30px -8px rgba(11, 19, 32, 0.08);
+            --shadow-glow: 0 10px 30px rgba(212, 175, 55, 0.25);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-body);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .promo-bar {
+            background: linear-gradient(90deg, #070D18 0%, #152238 50%, #070D18 100%);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+            color: #FFFFFF;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 9px 16px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .promo-badge {
+            background: var(--gold-metallic);
+            color: var(--primary-dark);
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .countdown-timer {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+            font-family: monospace;
+            font-weight: 700;
+            color: #FCD34D;
+        }
+
+        header {
+            background-color: var(--primary-dark);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.25);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 72px;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .brand-emblem {
+            width: 42px;
+            height: 42px;
+            background: var(--gold-metallic);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-dark);
+            font-weight: 900;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        .brand-text-wrapper {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-name {
+            color: #FFFFFF;
+            font-size: 1.45rem;
+            font-weight: 900;
+            letter-spacing: 2.5px;
+            line-height: 1;
+            font-family: 'Cinzel', serif;
+        }
+
+        .brand-tagline {
+            color: var(--text-gold);
+            font-size: 0.68rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-top: 3px;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .nav-link {
+            color: #CBD5E1;
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 600;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-link:hover {
+            color: var(--gold-accent);
+        }
+
+        .cart-trigger-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            color: #FFFFFF;
+            padding: 9px 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .cart-trigger-btn:hover {
+            background: rgba(212, 175, 55, 0.15);
+            border-color: var(--gold-accent);
+            transform: translateY(-1px);
+        }
+
+        .cart-count-badge {
+            background: var(--gold-metallic);
+            color: var(--primary-dark);
+            font-size: 0.75rem;
+            font-weight: 800;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-section {
+            padding: 50px 0 30px 0;
+            position: relative;
+        }
+
+        .hero-banner {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-surface) 60%, #1A2842 100%);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            box-shadow: 0 20px 40px -15px rgba(11, 19, 32, 0.4);
+            overflow: hidden;
+            position: relative;
+            min-height: 380px;
+            display: flex;
+            align-items: center;
+        }
+
+        .hero-glow-effect {
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 40px;
+            padding: 48px;
+            width: 100%;
+            align-items: center;
+            z-index: 2;
+        }
+
+        .hero-content {
+            color: #FFFFFF;
+        }
+
+        .hero-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(212, 175, 55, 0.12);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: var(--gold-accent);
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 18px;
+        }
+
+        .hero-title {
+            font-family: 'Cinzel', 'Cormorant Garamond', serif;
+            font-size: 2.85rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 16px;
+            color: #FFFFFF;
+            letter-spacing: 0.5px;
+            text-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .hero-title span {
+            background: var(--gold-metallic);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+        }
+
+        /* Quran Verses Slider Container */
+        .quran-card-container {
+            background: rgba(17, 27, 46, 0.85);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            border-radius: var(--radius-md);
+            padding: 26px 24px;
+            color: #FFFFFF;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 0 20px rgba(212, 175, 55, 0.05);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 280px;
+        }
+
+        .quran-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .quran-header-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            color: var(--gold-accent);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .quran-slides-wrapper {
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .quran-slide {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            animation: fadeInSlide 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .quran-slide.active {
+            display: flex;
+        }
+
+        @keyframes fadeInSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .arabic-text {
+            font-family: 'Amiri', serif;
+            font-size: 1.45rem;
+            line-height: 2.1;
+            text-align: right;
+            color: #FCF6BA;
+            direction: rtl;
+            font-weight: 700;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        .translation-text {
+            font-size: 0.88rem;
+            color: #E2E8F0;
+            line-height: 1.55;
+            font-style: italic;
+            border-left: 2px solid var(--gold-accent);
+            padding-left: 12px;
+            margin-top: 4px;
+        }
+
+        .surah-ref-badge {
+            display: inline-block;
+            align-self: flex-start;
+            background: rgba(212, 175, 55, 0.15);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: var(--gold-accent);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 12px;
+            margin-top: 6px;
+        }
+
+        .quran-slider-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 18px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .slider-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .dot-btn {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.25);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .dot-btn.active {
+            background: var(--gold-accent);
+            width: 22px;
+            border-radius: 10px;
+        }
+
+        .slider-arrow-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .slider-arrow-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: #FFFFFF;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .slider-arrow-btn:hover {
+            background: var(--gold-metallic);
+            color: var(--primary-dark);
+        }
+
+        .trust-section {
+            margin: 30px 0 50px 0;
+        }
+
+        .trust-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 18px;
+        }
+
+        .trust-card {
+            background: var(--surface-white);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: var(--shadow-subtle);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .trust-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--gold-accent);
+        }
+
+        .trust-icon-box {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--gold-light);
+            color: #A37E1C;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .trust-info h4 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-heading);
+        }
+
+        .trust-info p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .section-subtitle {
+            color: var(--text-gold);
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .section-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.6rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            position: relative;
+            display: inline-block;
+        }
+
+        .filter-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+        }
+
+        .tab-btn {
+            background: var(--surface-white);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-body);
+            padding: 11px 26px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: var(--shadow-subtle);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn:hover {
+            border-color: var(--gold-accent);
+            color: var(--primary-dark);
+        }
+
+        .tab-btn.active {
+            background: var(--primary-dark);
+            color: #FFFFFF;
+            border-color: var(--primary-dark);
+            box-shadow: 0 6px 18px rgba(11, 19, 32, 0.25);
+        }
+
+        .tab-btn.active i {
+            color: var(--gold-accent);
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 28px;
+            margin-bottom: 70px;
+        }
+
+        .product-card {
+            background: var(--surface-white);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
+            position: relative;
+        }
+
+        .product-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 35px -10px rgba(11, 19, 32, 0.15);
+            border-color: rgba(212, 175, 55, 0.4);
+        }
+
+        .product-media {
+            height: 230px;
+            background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        /* CSS Rendered Luxury Mockups */
+        .mockup-book {
+            width: 130px;
+            height: 180px;
+            border-radius: 4px 10px 10px 4px;
+            box-shadow: -8px 12px 20px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 16px;
+            text-align: center;
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+
+        .product-card:hover .mockup-book {
+            transform: scale(1.05) rotate(-1deg);
+        }
+
+        .mockup-book-1 {
+            background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+            border-left: 6px solid var(--gold-accent);
+            color: #FFFFFF;
+        }
+
+        .mockup-book-2 {
+            background: linear-gradient(135deg, #451A03 0%, #290E02 100%);
+            border-left: 6px solid #F59E0B;
+            color: #FEF3C7;
+        }
+
+        .mockup-webinar {
+            width: 180px;
+            height: 130px;
+            background: #0F172A;
+            border-radius: 10px;
+            border: 3px solid #334155;
+            box-shadow: 0 12px 25px rgba(0,0,0,0.25);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            padding: 12px;
+            position: relative;
+        }
+
+        .mockup-event {
+            width: 170px;
+            height: 140px;
+            background: linear-gradient(135deg, #022C22 0%, #064E3B 100%);
+            border: 2px dashed var(--gold-accent);
+            border-radius: 14px;
+            color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 14px;
+            text-align: center;
+            box-shadow: 0 10px 22px rgba(0,0,0,0.2);
+        }
+
+        .product-badge {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 4px 12px;
+            border-radius: 20px;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            z-index: 3;
+        }
+
+        .badge-buku { background: #0F172A; color: var(--gold-accent); border: 1px solid rgba(212,175,55,0.4); }
+        .badge-webinar { background: #0284C7; color: #FFFFFF; }
+        .badge-event { background: #059669; color: #FFFFFF; }
+
+        .scarcity-tag {
+            position: absolute;
+            bottom: 10px;
+            right: 12px;
+            background: rgba(220, 38, 38, 0.9);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .product-body {
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .rating-stars {
+            color: #F59E0B;
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .rating-count {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            margin-left: 4px;
+            font-weight: 600;
+        }
+
+        .product-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 12px;
+            line-height: 1.35;
+        }
+
+        .product-pricing {
+            margin-bottom: 18px;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .price-current {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: var(--primary-dark);
+        }
+
+        .price-original {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-decoration: line-through;
+        }
+
+        .card-actions-wrapper {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .qty-control-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .qty-picker {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            background: #F8FAFC;
+            overflow: hidden;
+            height: 40px;
+        }
+
+        .qty-btn {
+            background: transparent;
+            border: none;
+            width: 32px;
+            height: 100%;
+            font-weight: 700;
+            cursor: pointer;
+            color: var(--text-heading);
+            transition: background 0.2s;
+        }
+
+        .qty-btn:hover {
+            background: #E2E8F0;
+        }
+
+        .qty-val {
+            width: 32px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .add-cart-btn {
+            flex-grow: 1;
+            background: var(--primary-dark);
+            color: #FFFFFF;
+            border: none;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.25s ease;
+        }
+
+        .add-cart-btn:hover {
+            background: var(--primary-surface);
+            color: var(--gold-accent);
+        }
+
+        .direct-buy-btn {
+            width: 100%;
+            background: var(--gold-metallic);
+            color: var(--primary-dark);
+            border: none;
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            font-weight: 800;
+            font-size: 0.88rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.25);
+            transition: all 0.25s ease;
+        }
+
+        .direct-buy-btn:hover {
+            box-shadow: 0 6px 18px rgba(212, 175, 55, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .testimonials-section {
+            background: var(--primary-dark);
+            color: #FFFFFF;
+            border-radius: var(--radius-lg);
+            padding: 50px 40px;
+            margin-bottom: 70px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .testimonial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-top: 35px;
+        }
+
+        .testi-card {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-md);
+            padding: 24px;
+        }
+
+        .testi-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .avatar {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: var(--gold-metallic);
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+        }
+
+        .testi-info h5 {
+            font-size: 0.98rem;
+            font-weight: 700;
+            color: #FFFFFF;
+        }
+
+        .testi-info span {
+            font-size: 0.78rem;
+            color: var(--gold-accent);
+        }
+
+        .cart-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(11, 19, 32, 0.7);
+            backdrop-filter: blur(6px);
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .cart-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .cart-drawer {
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 100%;
+            max-width: 440px;
+            height: 100vh;
+            background: #FFFFFF;
+            z-index: 201;
+            box-shadow: -10px 0 40px rgba(0,0,0,0.3);
+            transition: right 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cart-drawer.active {
+            right: 0;
+        }
+
+        .cart-header {
+            padding: 22px;
+            background: var(--primary-dark);
+            color: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .cart-header h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cart-close-btn {
+            background: transparent;
+            border: none;
+            color: #FFFFFF;
+            font-size: 1.3rem;
+            cursor: pointer;
+        }
+
+        .free-shipping-bar {
+            background: var(--gold-light);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 10px 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #854D0E;
+            text-align: center;
+        }
+
+        .cart-body {
+            padding: 20px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .cart-item {
+            display: flex;
+            gap: 14px;
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #F1F5F9;
+            align-items: center;
+        }
+
+        .cart-item-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+        }
+
+        .cart-item-price {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #B89320;
+        }
+
+        .cart-footer {
+            padding: 22px;
+            border-top: 1px solid var(--border-subtle);
+            background: #F8FAFC;
+        }
+
+        .coupon-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .coupon-input {
+            flex-grow: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .coupon-btn {
+            background: var(--primary-dark);
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .cart-total-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.15rem;
+            font-weight: 800;
+            margin-bottom: 18px;
+            color: var(--primary-dark);
+        }
+
+        .checkout-main-btn {
+            width: 100%;
+            background: var(--gold-metallic);
+            color: var(--primary-dark);
+            border: none;
+            padding: 15px;
+            border-radius: var(--radius-sm);
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.25s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+        }
+
+        .checkout-main-btn:hover {
+            box-shadow: 0 6px 22px rgba(212, 175, 55, 0.5);
+            transform: translateY(-1px);
+        }
+
+        /* Modal Popup */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(11, 19, 32, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 300;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-card {
+            background: #FFFFFF;
+            width: 100%;
+            max-width: 520px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+        }
+
+        .modal-header {
+            background: var(--primary-dark);
+            color: white;
+            padding: 20px 26px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .modal-body {
+            padding: 26px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--primary-dark);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--gold-accent);
+        }
+
+        .payment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .payment-opt {
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 12px 8px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .payment-opt.selected {
+            border-color: var(--gold-accent);
+            background: var(--gold-light);
+            color: #854D0E;
+        }
+
+        .toast-notification {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background: var(--primary-dark);
+            color: #FFFFFF;
+            padding: 14px 22px;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 0.88rem;
+            z-index: 400;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid var(--gold-accent);
+        }
+
+        .toast-notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-notification i {
+            color: var(--gold-accent);
+        }
+
+        /* Live Recent Sales Pop-up */
+        .live-sales-popup {
+            position: fixed;
+            bottom: 25px;
+            left: 25px;
+            background: #FFFFFF;
+            border: 1px solid var(--border-gold);
+            border-radius: var(--radius-md);
+            padding: 14px 18px;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            z-index: 150;
+            transform: translateX(-150%);
+            transition: transform 0.4s ease;
+            max-width: 320px;
+        }
+
+        .live-sales-popup.active {
+            transform: translateX(0);
+        }
+
+        footer {
+            background: var(--primary-dark);
+            color: #FFFFFF;
+            padding: 60px 0 30px 0;
+            border-top: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 30px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .footer-brand p {
+            color: #94A3B8;
+            font-size: 0.88rem;
+            max-width: 320px;
+            margin-top: 12px;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .footer-links a {
+            color: #CBD5E1;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--gold-accent);
+        }
+
+        .copyright {
+            text-align: center;
+            color: #64748B;
+            font-size: 0.82rem;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .hero-grid { grid-template-columns: 1fr; padding: 28px; }
+            .hero-title { font-size: 2.2rem; }
+            .hero-metrics { flex-wrap: wrap; gap: 15px; }
+            .live-sales-popup { display: none; }
+        }
+
+        .hero-desc {
+            color: #94A3B8;
+            font-size: 1rem;
+            margin-bottom: 24px;
+            max-width: 520px;
+            line-height: 1.7;
+        }
+
+        .hero-metrics {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .metric-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metric-value {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--gold-accent);
+            font-family: 'Cinzel', serif;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: #94A3B8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+        .rt-msg{padding:14px 18px;font-weight:600;text-align:center}.rt-ok{background:#D1FAE5;color:#065F46}.rt-wait{background:#FEF3C7;color:#92400E}.rt-bad{background:#FEE2E2;color:#991B1B}
+        .p-desc{font-size:.82rem;color:var(--text-muted);margin:6px 0 4px}.p-info{font-size:.72rem;color:var(--text-muted);margin-bottom:8px}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<header><b>Kedai Kami</b><a href="portal.html">Portal Affiliate</a></header>
-<div class="wrap">
-  <div id="banner"></div>
-  <h2>Produk &amp; Servis</h2>
-  <div id="products" class="grid">Memuatkan...</div>
 
-  <div id="checkout" class="card">
-    <h2 style="margin:0">Troli anda</h2>
-    <div id="lines"></div>
-    <div class="row"><b>Jumlah produk</b><b id="sub"></b></div>
-    <small id="shipnote" style="display:none">Caj pos J&amp;T akan ditambah di halaman bayaran (untuk buku sahaja).</small>
-    <input id="cn" placeholder="Nama penuh">
-    <input id="ct" placeholder="No. telefon">
-    <input id="ce" type="email" placeholder="Emel">
-    <textarea id="ca" rows="3" placeholder="Alamat penghantaran (wajib untuk buku)" style="display:none"></textarea>
-    <button id="paybtn" class="pay" onclick="checkout()">Bayar sekarang (FPX)</button>
-    <small>Anda akan dihantar ke halaman rasmi ToyyibPay untuk membayar dengan selamat.</small>
-  </div>
-</div>
+    <div class="promo-bar">
+        <span class="promo-badge"><i class="fa-solid fa-lock"></i> PEMBAYARAN SELAMAT</span>
+        <span>Bayar melalui FPX di halaman rasmi ToyyibPay</span>
+    </div>
 
-<script>
+    <header>
+        <div class="container nav-container">
+            <a href="#" class="brand-logo">
+                <div class="brand-emblem">S</div>
+                <div class="brand-text-wrapper">
+                    <span class="brand-name">SAUFA</span>
+                    <span class="brand-tagline">HUB MEDAN ILMU</span>
+                </div>
+            </a>
+            
+            <div class="nav-actions">
+                <a href="#produk-section" class="nav-link">
+                    <i class="fa-solid fa-store"></i> Katalog
+                </a>
+                <a href="portal.html" class="nav-link">
+                    <i class="fa-solid fa-user-tie"></i> Rakan Niaga
+                </a>
+                <button class="cart-trigger-btn" onclick="toggleCartDrawer(true)">
+                    <i class="fa-solid fa-bag-shopping"></i>
+                    <span>Bakul</span>
+                    <span class="cart-count-badge" id="cartBadge">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div id="banner"></div>
+    <main class="container">
+        <section class="hero-section">
+            <div class="hero-banner">
+                <div class="hero-glow-effect"></div>
+                <div class="hero-grid">
+                    <div class="hero-content">
+                        <div class="hero-kicker">
+                            <i class="fa-solid fa-award"></i> Port Ilmu & Pembangunan Kerohanian
+                        </div>
+                        <h1 class="hero-title">Inspirasi Jiwa & <span>Minda Berkelas Tinggi</span></h1>
+                        <p class="hero-desc">
+                            Himpunan karya eksklusif, program bimbingan rohani, dan webinar unggul khas buat individu yang mendahului impak & ketenangan hidup.
+                        </p>
+                        
+                        <div class="hero-metrics">
+                            <div class="metric-item">
+                                <span class="metric-value">FPX</span>
+                                <span class="metric-label">Bayaran Selamat</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-value">J&amp;T</span>
+                                <span class="metric-label">Penghantaran Buku</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-value">100%</span>
+                                <span class="metric-label">Sokongan Terus</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quran Verses Auto Slider -->
+                    <div class="quran-card-container">
+                        <div class="quran-card-header">
+                            <div class="quran-header-title">
+                                <i class="fa-solid fa-book-quran"></i> KOLEKSI AYAT AL-QURAN
+                            </div>
+                            <i class="fa-solid fa-star-and-crescent" style="color:var(--gold-accent); font-size:1.1rem;"></i>
+                        </div>
+
+                        <div class="quran-slides-wrapper">
+                            <!-- Slide 1: Surah At-Takathur 102:3 -->
+                            <div class="quran-slide active" id="qSlide-0">
+                                <div class="arabic-text">كَلَّا سَوْفَ تَعْلَمُونَ</div>
+                                <div class="translation-text">"Sekali-kali tidak! Kelak kamu akan mengetahui."</div>
+                                <span class="surah-ref-badge"><i class="fa-solid fa-bookmark"></i> Surah At-Takathur (102:3)</span>
+                            </div>
+
+                            <!-- Slide 2: Surah Al-Insyiqaq 84:7-8 -->
+                            <div class="quran-slide" id="qSlide-1">
+                                <div class="arabic-text">فَأَمَّا مَنْ أُوتِيَ كِتَابَهُ بِيَمِينِهِ ۝ فَسَوْفَ يُحَاسَبُ حِسَابًا يَسِيرًا</div>
+                                <div class="translation-text">"Maka adapun orang yang diberikan kitabnya dari sebelah kanannya, maka dia akan diperiksa dengan pemeriksaan yang mudah."</div>
+                                <span class="surah-ref-badge"><i class="fa-solid fa-bookmark"></i> Surah Al-Insyiqaq (84:7-8)</span>
+                            </div>
+
+                            <!-- Slide 3: Surah An-Nisa 4:146 -->
+                            <div class="quran-slide" id="qSlide-2">
+                                <div class="arabic-text">إِلَّا الَّذِينَ تَابُوا وَأَصْلَحُوا وَاعْتَصَمُوا بِاللَّهِ وَأَخْلَصُوا دِينَهُمْ لِلَّهِ فَأُولَٰئِكَ مَعَ الْمُؤْمِنِينَ</div>
+                                <div class="translation-text">"Kecuali orang-orang yang bertaubat dan memperbaiki diri serta berpegang teguh pada agama Allah..."</div>
+                                <span class="surah-ref-badge"><i class="fa-solid fa-bookmark"></i> Surah An-Nisa (4:146)</span>
+                            </div>
+                        </div>
+
+                        <div class="quran-slider-nav">
+                            <div class="slider-dots">
+                                <button class="dot-btn active" onclick="goToQuranSlide(0)" id="qDot-0"></button>
+                                <button class="dot-btn" onclick="goToQuranSlide(1)" id="qDot-1"></button>
+                                <button class="dot-btn" onclick="goToQuranSlide(2)" id="qDot-2"></button>
+                            </div>
+                            <div class="slider-arrow-btns">
+                                <button class="slider-arrow-btn" onclick="prevQuranSlide()"><i class="fa-solid fa-chevron-left"></i></button>
+                                <button class="slider-arrow-btn" onclick="nextQuranSlide()"><i class="fa-solid fa-chevron-right"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="trust-section">
+            <div class="trust-grid">
+                <div class="trust-card">
+                    <div class="trust-icon-box"><i class="fa-solid fa-truck-fast"></i></div>
+                    <div class="trust-info">
+                        <h4>Penghantaran J&amp;T</h4>
+                        <p>Buku dihantar ke alamat anda</p>
+                    </div>
+                </div>
+                <div class="trust-card">
+                    <div class="trust-icon-box"><i class="fa-solid fa-certificate"></i></div>
+                    <div class="trust-info">
+                        <h4>Kandungan Berfokus</h4>
+                        <p>Disusun untuk manfaat yang jelas</p>
+                    </div>
+                </div>
+                <div class="trust-card">
+                    <div class="trust-icon-box"><i class="fa-solid fa-lock"></i></div>
+                    <div class="trust-info">
+                        <h4>Bayaran Selamat</h4>
+                        <p>FPX melalui ToyyibPay</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="produk-section">
+            <div class="section-header">
+                <p class="section-subtitle">KOLEKSI EKSKLUSIF</p>
+                <h2 class="section-title">Produk & Servis Pilihan</h2>
+            </div>
+
+            <div class="filter-tabs">
+                <button class="tab-btn active" onclick="filterCategory('all', this)"><i class="fa-solid fa-grid-2"></i> Semua</button>
+                <button class="tab-btn" onclick="filterCategory('buku', this)"><i class="fa-solid fa-book"></i> Buku Eksklusif</button>
+                <button class="tab-btn" onclick="filterCategory('webinar', this)"><i class="fa-solid fa-laptop-code"></i> Webinar LIVE</button>
+                <button class="tab-btn" onclick="filterCategory('event', this)"><i class="fa-solid fa-ticket"></i> Program & Event</button>
+            </div>
+
+            <div class="products-grid" id="productsGrid">
+                <!-- Products dynamically rendered by JS -->
+            </div>
+        </section>
+
+        <!-- GANTI dengan testimoni sebenar pelanggan sebelum dilancarkan -->
+<section class="testimonials-section">
+            <div class="section-header" style="margin-bottom:20px;">
+                <p class="section-subtitle" style="color:var(--gold-accent);">TESTIMONI PELANGGAN</p>
+                <h2 class="section-title" style="color:#FFFFFF;">Suara Alumni SAUFA</h2>
+            </div>
+
+            <div class="testimonial-grid">
+                <div class="testi-card">
+                    <div class="testi-header">
+                        <div class="avatar">PS</div>
+                        <div class="testi-info">
+                            <h5>Pelanggan SAUFA</h5>
+                            <span>Pembeli Buku</span>
+                        </div>
+                    </div>
+                    <div class="rating-stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+                    <p style="font-size: 0.88rem; color: #CBD5E1; margin-top: 10px;">"Kualiti fizikal buku dan bahasanya cukup halus. Sangat sesuai untuk memotivasikan jiwa dan kepimpinan."</p>
+                </div>
+
+                <div class="testi-card">
+                    <div class="testi-header">
+                        <div class="avatar" style="background:#059669; color:white;">PS</div>
+                        <div class="testi-info">
+                            <h5>Pelanggan SAUFA</h5>
+                            <span>Peserta Webinar</span>
+                        </div>
+                    </div>
+                    <div class="rating-stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+                    <p style="font-size: 0.88rem; color: #CBD5E1; margin-top: 10px;">"Penerangan yang sistematik dan teratur. Banyak merubah kualiti khusyuk solat harian saya."</p>
+                </div>
+
+                <div class="testi-card">
+                    <div class="testi-header">
+                        <div class="avatar" style="background:#B89320; color:white;">PS</div>
+                        <div class="testi-info">
+                            <h5>Pelanggan SAUFA</h5>
+                            <span>Peserta Event</span>
+                        </div>
+                    </div>
+                    <div class="rating-stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+                    <p style="font-size: 0.88rem; color: #CBD5E1; margin-top: 10px;">"Pengurusan majlis yang sangat koperat dan berprestij tinggi. Pengalaman luar biasa!"</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="cart-overlay" id="cartOverlay" onclick="toggleCartDrawer(false)"></div>
+    <div class="cart-drawer" id="cartDrawer">
+        <div class="cart-header">
+            <h3><i class="fa-solid fa-bag-shopping" style="color:var(--gold-accent);"></i> Bakul Belanja SAUFA</h3>
+            <button class="cart-close-btn" onclick="toggleCartDrawer(false)"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="free-shipping-bar">
+            <i class="fa-solid fa-truck-ramp-box"></i> Caj pos J&amp;T ditambah di halaman bayaran (untuk buku sahaja)
+        </div>
+        <div class="cart-body" id="cartItemsList">
+            <!-- Dynamic Cart Items -->
+        </div>
+        <div class="cart-footer">
+            <div class="cart-total-row">
+                <span>Jumlah Produk:</span>
+                <span id="cartTotalPrice">RM 0.00</span>
+            </div>
+            <button class="checkout-main-btn" onclick="openCheckoutModal()">
+                Teruskan Ke Pembayaran Selamat <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div class="modal-overlay" id="checkoutModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h4 style="font-size: 1.1rem; font-weight: 700;"><i class="fa-solid fa-shield-check" style="color:var(--gold-accent);"></i> Transaksi Pembayaran SAUFA</h4>
+                <button style="background:none; border:none; color:white; font-size:1.2rem; cursor:pointer;" onclick="closeCheckoutModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="checkoutForm" onsubmit="handleCheckoutSubmit(event)">
+                    <div class="form-group"><label>Nama Penuh</label><input id="cn" type="text" class="form-control" placeholder="cth: Ahmad Bin Rosli" required></div>
+                    <div class="form-group"><label>Alamat E-mel (Untuk Resit &amp; Maklumat Penyertaan)</label><input id="ce" type="email" class="form-control" placeholder="nama@domain.com" required></div>
+                    <div class="form-group"><label>Nombor WhatsApp Aktif</label><input id="ct" type="tel" class="form-control" placeholder="012-3456789" required></div>
+                    <div class="form-group" id="addrBox" style="display:none"><label>Alamat Penghantaran (wajib untuk buku)</label><textarea id="ca" class="form-control" rows="3" placeholder="Alamat penuh termasuk poskod"></textarea></div>
+                    <p style="font-size:.8rem;color:var(--text-muted);margin-top:8px"><i class="fa-solid fa-lock"></i> Anda akan dihantar ke halaman rasmi ToyyibPay untuk membayar melalui FPX. Caj pos J&amp;T (jika ada buku) dipaparkan di sana.</p>
+                    <button type="submit" id="payBtn" class="checkout-main-btn" style="margin-top:20px;">Teruskan ke Pembayaran <span id="modalPayAmount">RM 0.00</span></button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast-notification" id="toastNotification">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toastMsg">Produk ditambah ke bakul!</span>
+    </div>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="#" class="brand-logo">
+                        <div class="brand-emblem">S</div>
+                        <div class="brand-text-wrapper">
+                            <span class="brand-name">SAUFA</span>
+                        </div>
+                    </a>
+                    <p>Peneraju kandungan ilmiah, buku rohani berprestij & program latihan berimpak tinggi di Malaysia.</p>
+                    <p style="margin-top: 10px; font-size: 0.8rem; color: var(--gold-accent); font-weight: 700;">
+                        <i class="fa-solid fa-building-circle-check"></i> SAUFA dimiliki oleh LEGSA Empire Enterprise
+                    </p>
+                </div>
+                
+                <ul class="footer-links">
+                    <li><a href="#produk-section" onclick="filterCategory('all')">Katalog Utama</a></li>
+                    <li><a href="#produk-section" onclick="filterCategory('buku')">Buku Eksklusif</a></li>
+                    <li><a href="#produk-section" onclick="filterCategory('webinar')">Webinar LIVE</a></li>
+                    <li><a href="https://wa.me/60173311580" target="_blank" rel="noopener">WhatsApp 017-331 1580</a></li>
+<li><a href="https://wa.me/60176689277" target="_blank" rel="noopener">WhatsApp 017-668 9277</a></li>
+                </ul>
+            </div>
+            <div class="copyright">
+                &copy; 2026 SAUFA. Hak Cipta Terpelihara. SAUFA dimiliki oleh LEGSA Empire Enterprise.
+            </div>
+        </div>
+    </footer>
+
+    <script>
 const URL_ = 'https://hdqzankwjhhvywabjxtm.supabase.co';
 const db = supabase.createClient(URL_, 'sb_publishable_FEGHw6qemE6cj77TmnDMVA_k7gU5J2S');
 const $ = id => document.getElementById(id);
 const e = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rm = n => 'RM ' + Number(n).toFixed(2);
-const ICON = { BOOK: 'BUKU', WEBINAR: 'WEBINAR', EVENT: 'EVENT' };
-let products = [], cart = {};
+const CAT = { BOOK: 'buku', WEBINAR: 'webinar', EVENT: 'event' };
+const LABEL = { BOOK: 'BUKU EKSKLUSIF', WEBINAR: 'WEBINAR LIVE', EVENT: 'PROGRAM & EVENT' };
+let products = [], cart = [], qtys = {}, filter = 'all', currentQuranSlide = 0;
+const totalQuranSlides = 3;
 
-// ---- Affiliate attribution (last click, 30 hari) ----
-const DAYS = 30;
-function getRef() {
-  try {
-    const r = JSON.parse(localStorage.getItem('aff_ref') || 'null');
-    return r && Date.now() - r.t < DAYS * 864e5 ? r.code : null;
-  } catch { return null; }
-}
+window.addEventListener('DOMContentLoaded', () => { updateCartUI(); startQuranAutoSlider(); trackRef(); showReturn(); load(); });
+function showQuranSlide(index) {
+            currentQuranSlide = index;
+            if(currentQuranSlide >= totalQuranSlides) currentQuranSlide = 0;
+            if(currentQuranSlide < 0) currentQuranSlide = totalQuranSlides - 1;
+
+            for(let i = 0; i < totalQuranSlides; i++) {
+                const slide = document.getElementById(`qSlide-${i}`);
+                const dot = document.getElementById(`qDot-${i}`);
+                if(slide) slide.classList.toggle('active', i === currentQuranSlide);
+                if(dot) dot.classList.toggle('active', i === currentQuranSlide);
+            }
+        }
+
+        function nextQuranSlide() {
+            showQuranSlide(currentQuranSlide + 1);
+        }
+
+        function prevQuranSlide() {
+            showQuranSlide(currentQuranSlide - 1);
+        }
+
+        function goToQuranSlide(index) {
+            showQuranSlide(index);
+        }
+
+        function startQuranAutoSlider() {
+            setInterval(() => {
+                nextQuranSlide();
+            }, 6000); // Slides every 6 seconds
+        }
+
+// ---- Affiliate (last click, 30 hari) ----
+function getRef() { try { const r = JSON.parse(localStorage.getItem('aff_ref') || 'null'); return r && Date.now() - r.t < 30 * 864e5 ? r.code : null; } catch { return null; } }
 async function trackRef() {
   const code = new URLSearchParams(location.search).get('ref');
   if (!code) return;
@@ -74,70 +1632,98 @@ async function trackRef() {
   await db.rpc('track_click', { p_code: code, p_session: sid });
 }
 
-// ---- Selepas bayar (dari ToyyibPay) ----
+// ---- Selepas bayar: sahkan terus dengan ToyyibPay melalui server ----
 async function showReturn() {
   const o = new URLSearchParams(location.search).get('order');
   if (!o) return;
-  $('banner').innerHTML = `<div class="msg wait">Pesanan ${e(o)} sedang disahkan. Sila tunggu sebentar...</div>`;
+  const b = (c, t) => { $('banner').innerHTML = `<div class="rt-msg rt-${c}">${t}</div>`; };
+  b('wait', `Pesanan ${e(o)} sedang disahkan. Sila tunggu sebentar...`);
   try {
     const r = await fetch(URL_ + '/functions/v1/toyyibpay-callback?verify=' + encodeURIComponent(o));
     const t = await r.text();
-    $('banner').innerHTML = (r.ok && t === 'OK')
-      ? `<div class="msg ok">Terima kasih! Bayaran untuk ${e(o)} telah disahkan. Kami akan hubungi anda tidak lama lagi.</div>`
-      : `<div class="msg bad">Bayaran untuk ${e(o)} belum disahkan. Jika anda sudah membayar, sila hubungi kami dengan nombor pesanan ini.</div>`;
-  } catch (err) {
-    $('banner').innerHTML = `<div class="msg bad">Tidak dapat menyemak pesanan ${e(o)} sekarang. Sila hubungi kami dengan nombor pesanan ini.</div>`;
-  }
+    r.ok && t === 'OK' ? b('ok', `Terima kasih! Bayaran untuk ${e(o)} telah disahkan. Kami akan hubungi anda tidak lama lagi.`)
+                       : b('bad', `Bayaran untuk ${e(o)} belum disahkan. Jika anda sudah membayar, sila hubungi kami melalui WhatsApp dengan nombor pesanan ini.`);
+  } catch { b('bad', `Tidak dapat menyemak pesanan ${e(o)} sekarang. Sila hubungi kami dengan nombor pesanan ini.`); }
 }
 
-// ---- Produk & troli ----
+// ---- Produk ----
 async function load() {
   const { data, error } = await db.from('products').select('*').eq('active', true).order('created_at');
-  if (error) { $('products').textContent = 'Gagal memuatkan produk: ' + error.message; return; }
-  products = data;
-  $('products').innerHTML = data.length ? data.map(p => `<div class="card"><span class="tag">${ICON[p.type]}</span><b>${e(p.name)}</b><span class="price">${rm(p.price)}</span>
-    <div class="qty"><button onclick="chg('${p.id}',-1)">-</button><b id="q_${p.id}">0</b><button onclick="chg('${p.id}',1)">+</button></div></div>`).join('') : 'Belum ada produk.';
+  if (error) { $('productsGrid').innerHTML = '<p>Gagal memuatkan produk: ' + e(error.message) + '</p>'; return; }
+  products = data; renderProducts();
 }
-function chg(id, d) {
-  cart[id] = Math.max(0, Math.min(20, (cart[id] || 0) + d));
-  if (!cart[id]) delete cart[id];
-  $('q_' + id).textContent = cart[id] || 0;
-  renderCart();
+function visual(p, i) {
+  if (p.image_url) return `<img src="${e(p.image_url)}" alt="${e(p.name)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`;
+  if (p.type === 'BOOK') return `<div class="mockup-book mockup-book-${i % 2 + 1}"><div style="font-size:0.62rem;color:var(--gold-accent);text-transform:uppercase;letter-spacing:1px;font-weight:800;">Buku Eksklusif</div><div style="font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:700;line-height:1.2;margin:8px 0;">${e(p.name)}</div><div style="font-size:0.58rem;opacity:0.8;letter-spacing:1px;">SAUFA</div></div>`;
+  if (p.type === 'WEBINAR') return `<div class="mockup-webinar"><i class="fa-solid fa-video" style="font-size:1.8rem;color:var(--gold-accent);margin-bottom:8px;"></i><div style="font-size:0.75rem;font-weight:800;text-align:center;">SESI WEBINAR</div><div style="font-size:0.65rem;color:#94A3B8;">Sesi dalam talian</div></div>`;
+  return `<div class="mockup-event"><i class="fa-solid fa-ticket" style="font-size:1.8rem;color:var(--gold-accent);margin-bottom:8px;"></i><div style="font-size:0.8rem;font-weight:800;text-align:center;">PROGRAM & EVENT</div><div style="font-size:0.65rem;color:#CBD5E1;">Tiket penyertaan</div></div>`;
 }
-function renderCart() {
-  const ids = Object.keys(cart);
-  $('checkout').style.display = ids.length ? 'block' : 'none';
-  let sub = 0, book = false;
-  $('lines').innerHTML = ids.map(id => {
-    const p = products.find(x => x.id === id), t = p.price * cart[id];
-    sub += t; if (p.type === 'BOOK') book = true;
-    return `<div class="row"><span>${e(p.name)} x ${cart[id]}</span><span>${rm(t)}</span></div>`;
-  }).join('');
-  $('sub').textContent = rm(sub);
-  $('ca').style.display = book ? 'block' : 'none';
-  $('shipnote').style.display = book ? 'block' : 'none';
+function renderProducts() {
+  const list = products.filter(p => filter === 'all' || CAT[p.type] === filter);
+  let b = 0;
+  $('productsGrid').innerHTML = list.length ? list.map(p => `<div class="product-card">
+    <div class="product-media"><span class="product-badge badge-${CAT[p.type]}">${LABEL[p.type]}</span>${visual(p, p.type === 'BOOK' ? b++ : 0)}</div>
+    <div class="product-body">
+      <h3 class="product-title">${e(p.name)}</h3>
+      ${p.description ? `<p class="p-desc">${e(p.description)}</p>` : ''}${p.info ? `<div class="p-info">${e(p.info)}</div>` : ''}
+      <div class="product-pricing"><span class="price-current">${rm(p.price)}</span></div>
+      <div class="card-actions-wrapper">
+        <div class="qty-control-row">
+          <div class="qty-picker"><button class="qty-btn" onclick="adjustQty('${p.id}',-1)">-</button><span class="qty-val" id="qty-${p.id}">${qtys[p.id] || 1}</span><button class="qty-btn" onclick="adjustQty('${p.id}',1)">+</button></div>
+          <button class="add-cart-btn" onclick="addToCart('${p.id}')"><i class="fa-solid fa-cart-plus"></i> Bakul</button>
+        </div>
+        <button class="direct-buy-btn" onclick="quickBuyDirect('${p.id}')"><i class="fa-solid fa-bolt"></i> Beli Sekarang</button>
+      </div></div></div>`).join('') : '<p style="padding:20px">Belum ada produk.</p>';
+}
+function filterCategory(cat, btn) {
+  if (btn) { document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+  filter = cat; renderProducts();
 }
 
-async function checkout() {
-  const btn = $('paybtn');
+// ---- Bakul ----
+function adjustQty(id, d) { qtys[id] = Math.max(1, Math.min(20, (qtys[id] || 1) + d)); const el = $('qty-' + id); if (el) el.innerText = qtys[id]; }
+function addToCart(id) {
+  const p = products.find(x => x.id === id), q = qtys[id] || 1, ex = cart.find(i => i.id === id);
+  if (ex) ex.qty = Math.min(20, ex.qty + q); else cart.push({ id, name: p.name, price: Number(p.price), type: p.type, qty: q });
+  qtys[id] = 1; const el = $('qty-' + id); if (el) el.innerText = 1;
+  updateCartUI(); showToast(`"${p.name}" dimasukkan ke bakul!`);
+}
+function quickBuyDirect(id) { addToCart(id); openCheckoutModal(); }
+function removeItem(i) { cart.splice(i, 1); updateCartUI(); }
+function updateCartUI() {
+  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  $('cartBadge').innerText = cart.reduce((s, i) => s + i.qty, 0);
+  $('cartTotalPrice').innerText = rm(total); $('modalPayAmount').innerText = rm(total);
+  $('addrBox').style.display = cart.some(i => i.type === 'BOOK') ? 'block' : 'none';
+  $('cartItemsList').innerHTML = cart.length ? cart.map((it, i) => `<div class="cart-item">
+    <div style="width:40px;height:40px;background:var(--gold-light);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#854D0E;font-weight:bold;">${e(LABEL[it.type][0])}</div>
+    <div style="flex-grow:1;"><div class="cart-item-title">${e(it.name)}</div><div class="cart-item-price">${rm(it.price)} x ${it.qty}</div></div>
+    <button style="background:none;border:none;color:var(--danger);cursor:pointer;" onclick="removeItem(${i})"><i class="fa-solid fa-trash-can"></i></button></div>`).join('')
+    : `<div style="text-align:center;padding:50px 20px;color:var(--text-muted);"><i class="fa-solid fa-bag-shopping" style="font-size:3rem;opacity:0.3;margin-bottom:12px;"></i><p style="font-weight:700;color:var(--primary-dark);">Bakul anda masih kosong.</p></div>`;
+}
+function toggleCartDrawer(show) { $('cartDrawer').classList.toggle('active', show); $('cartOverlay').classList.toggle('active', show); }
+function openCheckoutModal() {
+  if (!cart.length) return showToast('Bakul anda kosong. Sila pilih produk terlebih dahulu.');
+  toggleCartDrawer(false); $('checkoutModal').classList.add('active');
+}
+function closeCheckoutModal() { $('checkoutModal').classList.remove('active'); }
+function showToast(msg) { $('toastMsg').innerText = msg; $('toastNotification').classList.add('show'); setTimeout(() => $('toastNotification').classList.remove('show'), 3200); }
+
+async function handleCheckoutSubmit(ev) {
+  ev.preventDefault();
+  const btn = $('payBtn'), label = btn.innerHTML;
   const customer = { name: $('cn').value.trim(), phone: $('ct').value.trim(), email: $('ce').value.trim(), address: $('ca').value.trim() };
-  if (!customer.name || !customer.phone || !customer.email) return alert('Sila isi nama, telefon dan emel.');
-  btn.disabled = true; btn.textContent = 'Memproses...';
+  btn.disabled = true; btn.innerText = 'Memproses...';
   try {
     const r = await fetch(URL_ + '/functions/v1/create-order', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: Object.entries(cart).map(([product_id, qty]) => ({ product_id, qty })), customer, ref: getRef() })
+      body: JSON.stringify({ items: cart.map(i => ({ product_id: i.id, qty: i.qty })), customer, ref: getRef() })
     });
     const out = await r.json();
     if (!r.ok || !out.payment_url) throw new Error(out.error || 'Ralat tidak diketahui');
     location.href = out.payment_url;
-  } catch (err) {
-    alert('Maaf, ' + err.message);
-    btn.disabled = false; btn.textContent = 'Bayar sekarang (FPX)';
-  }
+  } catch (err) { showToast('Maaf, ' + err.message); btn.disabled = false; btn.innerHTML = label; }
 }
-
-trackRef(); showReturn(); load();
 </script>
 </body>
 </html>
