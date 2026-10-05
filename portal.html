@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Portal Affiliate</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root{--g:#059669;--d:#0f172a}
 *{box-sizing:border-box}
@@ -32,6 +33,14 @@ main{margin-left:240px;padding:24px}
 th,td{text-align:left;padding:8px;border-bottom:1px solid #e2e8f0;white-space:nowrap}
 td input,td select{margin:0;min-width:80px}
 .st{background:#e2e8f0;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:600}
+.kpi span{color:#64748b;font-size:12px}.kpi small{display:block;font-size:12px;margin-top:2px}.up{color:#059669}.dn{color:#dc2626}.nt{color:#94a3b8}
+.cols{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}.cols .card{margin:0}.cv{position:relative;margin-top:10px}
+.chip{background:#fff;color:#0f172a;border:1px solid #cbd5e1}.chip.on{background:#0f172a;color:#fff;border-color:#0f172a}
+.insight{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;padding:12px 16px;border-radius:10px;margin-bottom:16px;line-height:1.5}
+.ord .oh{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:12px}
+.og{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}.og small{display:block;color:#64748b;font-size:11px;letter-spacing:.05em;margin-bottom:3px}.og a{display:block;color:#059669}.og b{display:block}
+.oa{margin-top:12px;padding-top:12px;border-top:1px dashed #e2e8f0}.oa select,.oa input{width:auto;flex:0 1 190px;margin:0}
+@media(max-width:800px){.cols{grid-template-columns:1fr}}
 @media(max-width:800px){aside{transform:translateX(-100%)}aside.open{transform:none}main{margin-left:0;padding:14px}.hb{display:inline-block}}
 </style>
 </head>
@@ -90,7 +99,7 @@ const NAV = {
   affiliate: [['dash','Dashboard'],['com','Komisen & Payout'],['prof','Profil & Bank']]
 };
 const ORDER_STATUS = ['PENDING_PAYMENT','PAID','SHIPPED','COMPLETED','CANCELLED','REFUNDED'];
-let me = null, aff = null, tab = '', cnt = {}, prodCache = [];
+let me = null, aff = null, tab = '', cnt = {}, prodCache = [], ordFilter = 'PAID', ordQ = '', ordCache = [], ordList = [], ovwDays = 30, charts = [], after = null;
 
 // ---------- AUTH ----------
 function showAuth(k) { $('f-l').style.display = k === 'l' ? 'block' : 'none'; $('f-r').style.display = k === 'r' ? 'block' : 'none'; }
@@ -125,11 +134,12 @@ async function boot() {
 const go = k => { tab = k; render(); };
 async function render() {
   if (me.role === 'admin') {
-    const [a, b] = await Promise.all([
+    const [a, b, d] = await Promise.all([
       db.from('affiliates').select('id', { count: 'exact', head: true }).eq('status', 'PENDING_APPROVAL'),
-      db.from('payouts').select('id', { count: 'exact', head: true }).eq('status', 'REQUESTED')
+      db.from('payouts').select('id', { count: 'exact', head: true }).eq('status', 'REQUESTED'),
+      db.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PAID')
     ]);
-    cnt = { aff: a.count, pay: b.count };
+    cnt = { aff: a.count, pay: b.count, ord: d.count };
   } else {
     const { data: a } = await db.from('affiliates').select('*').eq('user_id', me.id).single(); aff = a;
   }
@@ -137,55 +147,81 @@ async function render() {
   $('who').textContent = (me.full_name || me.email) + ' (' + me.role + ')';
   $('title').textContent = NAV[me.role].find(x => x[0] === tab)[1];
   $('sb').classList.remove('open');
+  after = null;
   try { $('content').innerHTML = await VIEWS[tab](); }
   catch (err) { console.error(err); $('content').innerHTML = `<div class="card"><b>Ralat memuatkan halaman</b><p>${e(err.message)}</p></div>`; }
+  if (after) { try { after(); } catch (err) { console.error(err); } after = null; }
 }
 
 // ---------- PAPARAN ----------
 const VIEWS = {
   // ADMIN
   ovw: async () => {
-    const since = new Date(Date.now() - 32 * 864e5).toISOString();
+    const days = ovwDays, DAY = 864e5, now = Date.now();
+    const since = new Date(now - (days * 2 + 2) * DAY).toISOString();
     const [o, it, c, a, pd] = await Promise.all([
       db.from('orders').select('id,status,subtotal,affiliate_id,created_at').gte('created_at', since),
-      db.from('order_items').select('product_name,qty,unit_price,orders(status)'),
+      db.from('order_items').select('product_name,qty,unit_price,products(type),orders(status,created_at)'),
       db.from('commissions').select('amount,status'),
       db.from('affiliates').select('id,name,code,status,clicks'),
       db.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'PAID')
     ]);
     const isPaid = s => ['PAID', 'SHIPPED', 'COMPLETED'].includes(s);
-    const P = (o.data || []).filter(x => isPaid(x.status));
     const day = d => new Date(d).toLocaleDateString('en-CA');
-    const today = day(Date.now()), month = today.slice(0, 7);
-    const tot = arr => arr.reduce((t, x) => t + Number(x.subtotal), 0);
-    const monthP = P.filter(x => day(x.created_at).startsWith(month));
+    const keysOf = (n, off) => [...Array(n)].map((_, i) => day(now - (off + n - 1 - i) * DAY));
+    const keys = keysOf(days, 0), prevKeys = keysOf(days, days);
+    const P = (o.data || []).filter(x => isPaid(x.status));
+    const sBy = {}, nBy = {};
+    P.forEach(x => { const k = day(x.created_at); sBy[k] = (sBy[k] || 0) + Number(x.subtotal); nBy[k] = (nBy[k] || 0) + 1; });
+    const tot = (ks, m) => ks.reduce((t, k) => t + (m[k] || 0), 0);
+    const cur = keys.map(k => sBy[k] || 0), ords = keys.map(k => nBy[k] || 0);
+    const sales = tot(keys, sBy), orders = tot(keys, nBy), pSales = tot(prevKeys, sBy), pOrders = tot(prevKeys, nBy);
+    const delta = (x, y) => y > 0 ? (x - y) / y * 100 : null;
+    const dBadge = d => d === null ? '<small class="nt">tiada data tempoh sebelum ini</small>' : `<small class="${d >= 0 ? 'up' : 'dn'}">${d >= 0 ? '&#9650;' : '&#9660;'} ${Math.abs(d).toFixed(0)}% berbanding ${days} hari sebelumnya</small>`;
+    const kpi = (l, v, x) => `<div class="card kpi"><span>${l}</span><b>${v}</b>${x || ''}</div>`;
     const cm = st => (c.data || []).filter(x => x.status === st).reduce((t, x) => t + Number(x.amount), 0);
 
-    const days = [...Array(30)].map((_, i) => day(Date.now() - (29 - i) * 864e5));
-    const vals = days.map(d => tot(P.filter(x => day(x.created_at) === d)));
-    const mx = Math.max(...vals, 1);
-    const chart = `<svg viewBox="0 0 600 150" style="width:100%;height:auto">${vals.map((v, i) => `<rect x="${i * 20 + 2}" y="${130 - v / mx * 120}" width="16" height="${v / mx * 120}" rx="3" fill="#059669"><title>${days[i]}: ${rm(v)}</title></rect>`).join('')}<text x="2" y="146" font-size="10" fill="#64748b">${days[0]}</text><text x="598" y="146" font-size="10" fill="#64748b" text-anchor="end">${days[29]}</text></svg>`;
-
-    const prodMap = {};
-    (it.data || []).filter(x => x.orders && isPaid(x.orders.status)).forEach(x => {
-      const r = prodMap[x.product_name] ||= { q: 0, v: 0 }; r.q += x.qty; r.v += x.qty * Number(x.unit_price);
-    });
-    const topP = Object.entries(prodMap).sort((x, y) => y[1].v - x[1].v).slice(0, 5);
+    const inP = (it.data || []).filter(x => x.orders && isPaid(x.orders.status) && keys.includes(day(x.orders.created_at)));
+    const byType = {}, byProd = {};
+    inP.forEach(x => { const v = x.qty * Number(x.unit_price), t = x.products?.type || 'LAIN'; byType[t] = (byType[t] || 0) + v; const r = byProd[x.product_name] ||= { q: 0, v: 0 }; r.q += x.qty; r.v += v; });
+    const TN = { BOOK: 'Buku', WEBINAR: 'Webinar', EVENT: 'Event', LAIN: 'Lain-lain' };
+    const topP = Object.entries(byProd).sort((x, y) => y[1].v - x[1].v).slice(0, 5);
 
     const affMap = {};
-    P.filter(x => x.affiliate_id).forEach(x => { const r = affMap[x.affiliate_id] ||= { n: 0, v: 0 }; r.n++; r.v += Number(x.subtotal); });
+    P.filter(x => x.affiliate_id && keys.includes(day(x.created_at))).forEach(x => { const r = affMap[x.affiliate_id] ||= { n: 0, v: 0 }; r.n++; r.v += Number(x.subtotal); });
     const topA = Object.entries(affMap).sort((x, y) => y[1].v - x[1].v).slice(0, 5).map(([id, r]) => {
       const f = (a.data || []).find(z => z.id === id) || {};
       return [e(f.name), e(f.code), rm(r.v), r.n, f.clicks || 0, f.clicks ? (r.n / f.clicks * 100).toFixed(1) + '%' : '-'];
     });
 
+    const fmtD = k => new Date(k + 'T00:00:00').toLocaleDateString('ms-MY', { day: 'numeric', month: 'short' });
+    const bi = cur.indexOf(Math.max(...cur));
+    const insight = orders
+      ? `Dalam ${days} hari terakhir: <b>${rm(sales)}</b> daripada <b>${orders} order</b>. Hari terbaik: <b>${fmtD(keys[bi])}</b> (${rm(cur[bi])}).${topP[0] ? ` Produk terlaris: <b>${e(topP[0][0])}</b>.` : ''}`
+      : `Belum ada jualan dalam ${days} hari terakhir. Bila order pertama dibayar, carta akan muncul di sini.`;
     const todo = [[pd.count, 'order dibayar, menunggu dihantar/diselesaikan', 'ord'], [cnt.aff, 'affiliate menunggu kelulusan', 'aff'], [cnt.pay, 'permohonan payout menunggu dibayar', 'pay']].filter(x => x[0] > 0);
-    const activeAff = (a.data || []).filter(x => x.status === 'ACTIVE').length;
 
-    return `<div class="grid">${card('Jualan hari ini', rm(tot(P.filter(x => day(x.created_at) === today))))}${card('Jualan bulan ini', rm(tot(monthP)))}${card('Order bulan ini', monthP.length)}${card('Komisen menunggu holding', rm(cm('PENDING')))}${card('Komisen perlu dibayar', rm(cm('APPROVED') + cm('REQUESTED')))}${card('Affiliate aktif', activeAff)}</div>
+    after = () => {
+      charts.forEach(ch => ch.destroy()); charts = [];
+      if (typeof Chart === 'undefined' || !orders) return;
+      Chart.defaults.font.family = 'system-ui,sans-serif'; Chart.defaults.color = '#64748b';
+      const mk = (id, cfg) => { const el = $(id); if (el) charts.push(new Chart(el, cfg)); };
+      const money = v => 'RM ' + Number(v).toLocaleString('ms-MY', { maximumFractionDigits: 0 });
+      mk('ch_trend', { type: 'line', data: { labels: keys.map(fmtD), datasets: [{ label: 'Jualan', data: cur, borderColor: '#059669', backgroundColor: 'rgba(5,150,105,.14)', fill: true, tension: .35, borderWidth: 2.5, pointRadius: days <= 30 ? 3 : 0, pointHoverRadius: 6, pointBackgroundColor: '#059669' }] },
+        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: x => ` ${rm(x.parsed.y)} · ${ords[x.dataIndex]} order` } } }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }, y: { beginAtZero: true, grace: '10%', ticks: { callback: money }, grid: { color: '#eef2f7' } } } } });
+      const tk = Object.keys(byType);
+      mk('ch_type', { type: 'doughnut', data: { labels: tk.map(k => TN[k]), datasets: [{ data: tk.map(k => byType[k]), backgroundColor: ['#0f172a', '#059669', '#c9a24a', '#94a3b8'], borderWidth: 2, borderColor: '#fff' }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: x => ` ${x.label}: ${rm(x.parsed)}` } } } } });
+      mk('ch_prod', { type: 'bar', data: { labels: topP.map(x => x[0]), datasets: [{ data: topP.map(x => x[1].v), backgroundColor: '#059669', borderRadius: 6, barThickness: 22 }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: x => ` ${rm(x.parsed.x)} · ${topP[x.dataIndex][1].q} unit` } } }, scales: { x: { ticks: { callback: money }, grid: { color: '#eef2f7' } }, y: { grid: { display: false } } } } });
+    };
+
+    return `<div class="fr" style="margin-bottom:14px">${[7, 30, 90].map(d => `<button class="chip ${d === days ? 'on' : ''}" onclick="ovwDays=${d};render()">${d} hari</button>`).join('')}</div>
+    <div class="insight">${insight}</div>
+    <div class="grid">${kpi('Jualan produk', rm(sales), dBadge(delta(sales, pSales)))}${kpi('Bilangan order', orders, dBadge(delta(orders, pOrders)))}${kpi('Purata nilai order', orders ? rm(sales / orders) : '-')}${kpi('Komisen perlu dibayar', rm(cm('APPROVED') + cm('REQUESTED')), '<small class="nt">kepada affiliate</small>')}${kpi('Komisen menunggu holding', rm(cm('PENDING')))}${kpi('Affiliate aktif', (a.data || []).filter(x => x.status === 'ACTIVE').length)}</div>
     <div class="card"><b>Tindakan perlu</b><div style="margin-top:8px">${todo.length ? todo.map(x => `<button class="gr" onclick="go('${x[2]}')"><b>${x[0]}</b> ${x[1]}</button>`).join('') : 'Tiada tindakan tertunda.'}</div></div>
-    <div class="card"><b>Jualan produk 30 hari terakhir</b> <small>(tanpa caj pos)</small>${chart}</div>
-    <h3>Produk terlaris</h3>${table(['Produk', 'Unit terjual', 'Jualan'], topP.map(([n, r]) => [e(n), r.q, rm(r.v)]))}
+    ${orders ? `<div class="cols"><div class="card"><b>Jualan harian</b> <small class="nt">(tanpa caj pos)</small><div class="cv" style="height:280px"><canvas id="ch_trend"></canvas></div></div><div class="card"><b>Jualan ikut jenis</b><div class="cv" style="height:280px"><canvas id="ch_type"></canvas></div></div></div>
+    <div class="card"><b>Produk terlaris</b><div class="cv" style="height:${50 + topP.length * 44}px"><canvas id="ch_prod"></canvas></div></div>` : ''}
     <h3>Affiliate terbaik</h3>${table(['Nama', 'Kod', 'Jualan', 'Order', 'Klik', 'Klik kepada order'], topA)}
     <small>Jualan dikira untuk order berstatus PAID, SHIPPED atau COMPLETED.</small>`;
   },
@@ -211,13 +247,13 @@ const VIEWS = {
       data.map(p => `<div class="card"><b>${e(p.name)}</b><textarea id="pd_${p.id}" rows="3" placeholder="Keterangan produk">${e(p.description || '')}</textarea><input id="pi_${p.id}" placeholder="Info ringkas (cth: Webinar dalam talian · 15 Nov 2026, 8.30 malam)" value="${e(p.info || '')}"><input id="pg_${p.id}" placeholder="Pautan gambar (cth: images/buku1.jpg)" value="${e(p.image_url || '')}"><button onclick="saveInfo('${p.id}')">Simpan butiran</button></div>`).join('');
   },
   ord: async () => {
-    const { data } = await db.from('orders').select('*, affiliates(code)').order('created_at', { ascending: false });
-    if (!data.length) return '<div class="card">Belum ada order. Order akan masuk di sini selepas ToyyibPay disambung.</div>';
-    return table(['No. Order','Pelanggan','Jumlah','Affiliate','Status','No. tracking J&amp;T'], data.map(o => [
-      e(o.order_no), e(o.customer_name), rm(o.total), e(o.affiliates?.code || '-'),
-      `<select onchange="run(db.rpc('set_order_status',{p_order:'${o.id}',p_status:this.value}))">${ORDER_STATUS.map(s => `<option ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}</select>`,
-      `<input placeholder="No. tracking" value="${e(o.tracking_no || '')}" onchange="run(db.from('orders').update({tracking_no:this.value}).eq('id','${o.id}'))">`
-    ]));
+    const { data, error } = await db.from('orders').select('*, affiliates(code), order_items(product_name,qty)').order('created_at', { ascending: false });
+    if (error) return `<div class="card">Ralat: ${e(error.message)}</div>`;
+    ordCache = data;
+    const chips = Object.entries(ORD_GROUPS).map(([k, g]) => `<button class="chip ${k === ordFilter ? 'on' : ''}" onclick="ordFilter='${k}';render()">${g[0]} (${data.filter(g[1]).length})</button>`).join('');
+    return `<div class="fr" style="margin-bottom:12px">${chips}</div>
+      <div class="fr" style="margin-bottom:14px"><input placeholder="Cari no. order, nama, telefon atau emel" value="${e(ordQ)}" oninput="ordQ=this.value;renderOrdList()"><button class="gr" onclick="exportOrders()">Eksport CSV (senarai ini)</button></div>
+      <div id="ordlist">${ordListHtml()}</div>`;
   },
   pay: async () => {
     const { data } = await db.from('payouts').select('*, affiliates(name,code,bank_name,bank_account,bank_holder)').order('requested_at', { ascending: false });
@@ -260,6 +296,46 @@ const VIEWS = {
 const setAff = (id, s) => run(db.from('affiliates').update({ status: s }).eq('id', id));
 const addProd = () => run(db.from('products').insert({ name: $('np_n').value.trim(), type: $('np_t').value, price: Number($('np_p').value) }));
 const saveProd = id => run(db.from('products').update({ price: Number($('pp_' + id).value), commission_type: $('pt_' + id).value, commission_value: Number($('pv_' + id).value), active: $('pa_' + id).checked }).eq('id', id), 'Disimpan');
+const ORD_GROUPS = {
+  PAID: ['Perlu diproses', o => o.status === 'PAID'], SHIPPED: ['Dihantar', o => o.status === 'SHIPPED'],
+  COMPLETED: ['Selesai', o => o.status === 'COMPLETED'], PENDING: ['Belum bayar', o => o.status === 'PENDING_PAYMENT'],
+  OTHER: ['Batal/Refund', o => ['CANCELLED', 'REFUNDED'].includes(o.status)], ALL: ['Semua', () => true]
+};
+const waNo = t => { const d = String(t || '').replace(/\D/g, ''); return d.startsWith('0') ? '6' + d : d.startsWith('60') ? d : '60' + d; };
+const renderOrdList = () => { $('ordlist').innerHTML = ordListHtml(); };
+function ordListHtml() {
+  const q = ordQ.trim().toLowerCase();
+  ordList = ordCache.filter(ORD_GROUPS[ordFilter][1]).filter(o => !q || [o.order_no, o.customer_name, o.customer_phone, o.customer_email].join(' ').toLowerCase().includes(q));
+  if (!ordList.length) return '<div class="card">Tiada order dalam senarai ini.</div>';
+  const why = { self_referral: ' <small>(self-referral disekat)</small>', not_found: ' <small>(kod tidak sah)</small>', inactive: ' <small>(affiliate tidak aktif)</small>' };
+  return ordList.map(o => {
+    const items = (o.order_items || []).map(i => `${i.qty} × ${e(i.product_name)}`).join('<br>') || '-';
+    const ship = o.shipping_fee > 0 ? ` <small>(termasuk pos ${rm(o.shipping_fee)})</small>` : '';
+    const nxt = o.status === 'PAID' ? (o.shipping_address ? ['SHIPPED', 'Tanda Dihantar'] : ['COMPLETED', 'Tanda Selesai']) : o.status === 'SHIPPED' ? ['COMPLETED', 'Tanda Selesai'] : null;
+    return `<div class="card ord">
+      <div class="oh"><b>${e(o.order_no)}</b>${st(o.status)}<small>${new Date(o.created_at).toLocaleString('ms-MY', { dateStyle: 'medium', timeStyle: 'short' })}</small><span style="margin-left:auto"><b style="display:inline">${rm(o.total)}</b>${ship}</span></div>
+      <div class="og">
+        <div><small>PELANGGAN</small><b>${e(o.customer_name)}</b><a href="https://wa.me/${waNo(o.customer_phone)}" target="_blank" rel="noopener">${e(o.customer_phone)} (WhatsApp)</a><a href="mailto:${e(o.customer_email)}">${e(o.customer_email)}</a></div>
+        <div><small>BARANG DIBELI</small>${items}</div>
+        <div><small>ALAMAT PENGHANTARAN</small>${o.shipping_address ? e(o.shipping_address).replace(/\n/g, '<br>') + `<br><button class="gr" onclick="copyOrder('${o.id}')">Salin untuk J&amp;T</button>` : '<span class="nt">Tiada penghantaran (webinar/event)</span>'}</div>
+      </div>
+      <div class="fr oa"><span>Affiliate: <b style="display:inline">${o.affiliates?.code ? e(o.affiliates.code) : '-' + (why[o.ref_status] || '')}</b></span>
+        <select onchange="run(db.rpc('set_order_status',{p_order:'${o.id}',p_status:this.value}))">${ORDER_STATUS.map(s => `<option ${s === o.status ? 'selected' : ''}>${s}</option>`).join('')}</select>
+        ${o.shipping_address ? `<input placeholder="No. tracking J&amp;T" value="${e(o.tracking_no || '')}" onchange="run(db.from('orders').update({tracking_no:this.value}).eq('id','${o.id}'))">` : ''}
+        ${nxt ? `<button onclick="run(db.rpc('set_order_status',{p_order:'${o.id}',p_status:'${nxt[0]}'}))">${nxt[1]}</button>` : ''}</div></div>`;
+  }).join('');
+}
+function copyOrder(id) {
+  const o = ordCache.find(x => x.id === id);
+  navigator.clipboard.writeText(`${o.customer_name}\n${o.customer_phone}\n${o.shipping_address}`).then(() => alert('Nama, telefon dan alamat disalin'));
+}
+function exportOrders() {
+  const q = v => { let s = String(v ?? ''); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+  const rows = [['No Order', 'Tarikh', 'Status', 'Nama', 'Telefon', 'Emel', 'Alamat', 'Barang', 'Jumlah', 'Tracking']].concat(ordList.map(o => [o.order_no, new Date(o.created_at).toLocaleString('ms-MY'), o.status, o.customer_name, o.customer_phone, o.customer_email, o.shipping_address, (o.order_items || []).map(i => i.qty + 'x ' + i.product_name).join('; '), o.total, o.tracking_no]));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + rows.map(r => r.map(q).join(',')).join('\n')], { type: 'text/csv' }));
+  a.download = 'orders.csv'; a.click();
+}
 async function delProd(id) {
   const p = prodCache.find(x => x.id === id);
   if (!confirm(`Padam produk "${p ? p.name : ''}" secara kekal?`)) return;
