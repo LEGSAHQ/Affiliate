@@ -1,0 +1,14 @@
+# Hantar permintaan ringkas ke Supabase setiap 3 hari supaya projek percuma tidak dijeda.
+name: Keep Supabase active
+on:
+  schedule:
+    - cron: '0 3 */3 * *'
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          curl -sf "https://hdqzankwjhhvywabjxtm.supabase.co/rest/v1/products?select=id&limit=1" \
+            -H "apikey: sb_publishable_FEGHw6qemE6cj77TmnDMVA_k7gU5J2S"
